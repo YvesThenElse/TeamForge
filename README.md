@@ -1,259 +1,130 @@
-# TeamForge 🔨
+# TeamForge
 
-> **Visual interface to configure Claude Code sub-agents for your git projects**
+Visual interface to configure Claude Code sub-agents for git projects.
 
-TeamForge is a cross-platform desktop application built with Tauri 2.0 and React that simplifies the creation and management of Claude Code sub-agents. Select agents from a comprehensive library, customize them for your project, and generate ready-to-use configurations.
+Cross-platform desktop application built with Tauri 2.0 and React. Manage AI agent teams, analyze projects automatically, and generate ready-to-use Claude Code configurations.
 
-## ✨ Features
+## Features
 
-- 🎯 **Smart Project Analysis** - Automatically detects your project type and technologies
-- 🤖 **30+ Pre-built Agents** - Comprehensive library covering development, testing, documentation, DevOps, and more
-- 🔍 **Intelligent Suggestions** - Get agent recommendations based on your tech stack
-- 📝 **Advanced Agent Builder** - Create and customize agents with Monaco Editor
-- 🔄 **Workflow Management** - Define sequential workflows between agents
-- 🌳 **Git Integration** - Clone repositories or work with local folders
-- 💾 **Configuration Management** - Save and reuse agent teams with presets
-- ✅ **Validation** - Built-in config validation and best practices
-- 🎨 **Modern UI** - Clean, intuitive interface with Tailwind CSS
-- 🖥️ **Cross-Platform** - Windows, macOS, and Linux support
+- Smart project analysis (auto-detect technologies and project type)
+- 30+ pre-built agents (development, testing, documentation, DevOps)
+- Agent workflow management (sequential ordering)
+- Git integration (clone repositories, create commits)
+- Configuration validation
+- Cross-platform support (Windows, macOS, Linux)
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
-- **Node.js** 18+ and npm
-- **Rust** 1.70+ and cargo
-- **Git** (for repository cloning)
+- Node.js 18+ and npm
+- Rust 1.70+ and cargo
+- Git
 
-#### Windows-Specific Requirements
+#### Windows Setup
 
-Tauri requires C++ build tools on Windows. Choose one of these options:
+Install C++ build tools (required for Tauri):
 
-**Option 1: Microsoft Visual C++ Build Tools (Recommended)**
-1. Download [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
-2. Install with these workloads:
-   - ✅ Desktop development with C++
-   - ✅ Windows 10/11 SDK
-   - ✅ MSVC v143 build tools
-3. Configure Rust to use MSVC toolchain:
-   ```bash
-   rustup default stable-msvc
-   ```
+**Option 1: Visual Studio Build Tools (Recommended)**
+```bash
+# 1. Download from https://visualstudio.microsoft.com/visual-cpp-build-tools/
+# 2. Install: Desktop development with C++, Windows SDK, MSVC build tools
+# 3. Configure Rust:
+rustup default stable-msvc
+```
 
 **Option 2: MinGW-w64**
-1. Download [MinGW-w64](https://www.mingw-w64.org/downloads/)
-2. Install and add `bin/` directory to your PATH
-3. Use GNU toolchain:
-   ```bash
-   rustup default stable-gnu
-   ```
-
-**Verify your setup:**
 ```bash
-rustup show       # Check active toolchain
-rustc --version   # Verify Rust installation
-cargo --version   # Verify Cargo installation
-node --version    # Verify Node.js installation
+# 1. Download from https://www.mingw-w64.org/downloads/
+# 2. Add bin/ to PATH
+# 3. Configure Rust:
+rustup default stable-gnu
 ```
 
 ### Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/yourusername/teamforge.git
 cd teamforge
-
-# Install dependencies
-npm run setup
-# or simply: npm install
+npm install
 ```
 
 ### Development
 
 ```bash
-# Start development server (recommended)
 npm start
-
-# Alternative: run Tauri dev directly
-npm run tauri:dev
-
-# Run only frontend (Vite)
-npm run dev
 ```
 
 ### Build
 
 ```bash
-# Build for production
 npm run tauri:build
-
-# Build frontend only
-npm run build
 ```
 
-### Available Scripts
+## Usage
 
-| Script | Description |
-|--------|-------------|
-| `npm run setup` | Install all dependencies |
-| `npm start` | Start development server (Tauri + React) |
-| `npm run dev` | Start Vite dev server only |
-| `npm run build` | Build frontend for production |
-| `npm run tauri:dev` | Start Tauri development mode |
-| `npm run tauri:build` | Build Tauri application |
-| `npm run clean` | Remove node_modules, dist, and build artifacts |
-| `npm run clean:install` | Clean reinstall of dependencies |
-| `npm run check:frontend` | TypeScript type checking |
-| `npm run check:backend` | Rust cargo check |
+1. **Select Project** - Choose local folder or clone from Git URL
+2. **Analyze** - Auto-detect project type and technologies
+3. **Choose Agents** - Select from 30+ pre-built agents or create custom ones
+4. **Configure Workflow** - Define sequential execution order (optional)
+5. **Generate** - Export to `.claude/agents/` and `.teamforge/config.json`
 
-## 📖 Usage
-
-### 1. Select Your Project
-
-Choose between:
-- **Local Folder** - Browse to an existing project on your computer
-- **Git Clone** - Clone a repository from a Git URL
-
-### 2. Analyze Your Project
-
-TeamForge automatically:
-- Detects project type (Web, API, Mobile, Desktop, Library)
-- Identifies technologies (React, Node.js, Python, Rust, etc.)
-- Suggests relevant agents based on your stack
-
-### 3. Choose Your Agents
-
-Browse and select from 30+ pre-built agents:
-- **Development**: Backend, Frontend, Fullstack, Mobile, API Designer
-- **Testing**: Test Engineer, QA, E2E Tester
-- **Documentation**: Tech Writer, API Documenter, README Specialist
-- **Architecture**: Solution Architect, Code Reviewer, Refactoring Specialist
-- **DevOps**: DevOps Engineer, Docker Specialist, CI/CD Expert
-- **Database**: Database Designer, Query Optimizer
-- **Security**: Security Auditor, Dependency Checker
-- **Performance**: Performance Optimizer
-- And more!
-
-### 4. Configure Workflow (Optional)
-
-Define a sequential workflow for your agents:
-```
-1. Backend Developer
-2. Code Reviewer
-3. Test Engineer
-4. Tech Writer
-```
-
-### 5. Generate Configuration
-
-TeamForge creates:
-- `.claude/agents/*.md` - Claude Code agent files
-- `.teamforge/config.json` - Main configuration
-- `.teamforge/presets/` - Reusable team presets
-
-## 🏗️ Architecture
-
-### Technology Stack
-
-**Backend (Rust)**
-- Tauri 2.0 - Desktop application framework
-- git2 - Git operations
-- serde - Serialization
-- walkdir - File system traversal
-
-**Frontend (React)**
-- React 18 - UI library
-- TypeScript - Type safety
-- Zustand - State management
-- Tailwind CSS - Styling
-- Radix UI - Component primitives
-- Monaco Editor - Code editing
-
-### Project Structure
+## Project Structure
 
 ```
 TeamForge/
 ├── src/                  # React frontend
 │   ├── components/       # UI components
 │   ├── hooks/            # Custom hooks
-│   ├── stores/           # Zustand stores
-│   ├── services/         # API wrappers
+│   ├── stores/           # Zustand state
 │   └── types/            # TypeScript types
-│
 ├── src-tauri/            # Rust backend
-│   ├── src/
-│   │   ├── commands/     # Tauri commands
-│   │   ├── services/     # Business logic
-│   │   ├── models/       # Data structures
-│   │   ├── embedded/     # Agent library
-│   │   └── utils/        # Helpers
-│   └── Cargo.toml
-│
-└── .claude/              # Claude Code agents (for TeamForge itself!)
-    └── agents/           # Self-development agents
+│   ├── commands/         # Tauri commands
+│   ├── services/         # Business logic
+│   ├── models/           # Data structures
+│   └── embedded/         # Agent library
+└── .claude/agents/       # TeamForge self-development agents
 ```
 
-## 🤝 Contributing
+## Technology Stack
 
-Contributions are welcome! TeamForge uses Claude Code for its own development.
+**Backend**: Tauri 2.0, Rust, git2, serde
+**Frontend**: React 18, TypeScript, Zustand, Tailwind CSS, Radix UI
 
-### Development with Claude Code
+## Available Scripts
 
-TeamForge includes specialized agents for its own development:
+| Command | Description |
+|---------|-------------|
+| `npm start` | Start development server |
+| `npm run tauri:build` | Build production app |
+| `npm run clean` | Remove build artifacts |
+| `npm run check:frontend` | TypeScript type check |
+| `npm run check:backend` | Rust cargo check |
+
+## Contributing
+
+TeamForge uses Claude Code for its own development with 5 specialized agents:
 - `fullstack-developer` - General development
-- `rust-specialist` - Backend Rust development
-- `react-specialist` - Frontend React development
+- `rust-specialist` - Backend development
+- `react-specialist` - Frontend development
 - `code-reviewer` - Code reviews
 - `tech-writer` - Documentation
 
-### Getting Started
-
+Standard contribution workflow:
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Run tests and checks
-5. Commit your changes (`git commit -m 'Add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
+2. Create feature branch
+3. Make changes
+4. Run checks
+5. Submit pull request
 
-## 📚 Documentation
+## Troubleshooting
 
-- [Architecture Guide](docs/architecture.md) - System design and patterns
-- [Agent Library](docs/agents.md) - Complete agent reference
-- [API Reference](docs/api.md) - Tauri commands and TypeScript API
-- [Contributing](docs/contributing.md) - Development guidelines
+**Build errors on Windows**: Install Visual Studio Build Tools (see Prerequisites)
 
-## 🐛 Troubleshooting
+**Rust not found**: Install from https://rustup.rs/
 
-### Build Issues
+**dlltool.exe error**: Configure MSVC toolchain with `rustup default stable-msvc`
 
-If you encounter build errors:
-```bash
-# Clean and rebuild
-npm run clean
-npm install
-npm run tauri:build
-```
+## License
 
-### Rust/Cargo Not Found
-
-Ensure Rust is installed and in your PATH:
-```bash
-rustc --version
-cargo --version
-```
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) file for details
-
-## 🙏 Acknowledgments
-
-- [Claude Code](https://code.claude.com) - AI-powered coding assistant
-- [Tauri](https://tauri.app) - Desktop application framework
-- [React](https://react.dev) - UI library
-- The open-source community
-
----
-
-**Built with ❤️ using Tauri, React, and Claude Code**
+MIT
