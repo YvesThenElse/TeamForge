@@ -33,14 +33,21 @@ git clone https://github.com/yourusername/teamforge.git
 cd teamforge
 
 # Install dependencies
-npm install
+npm run setup
+# or simply: npm install
 ```
 
 ### Development
 
 ```bash
-# Start development server
+# Start development server (recommended)
+npm start
+
+# Alternative: run Tauri dev directly
 npm run tauri:dev
+
+# Run only frontend (Vite)
+npm run dev
 ```
 
 ### Build
@@ -48,7 +55,25 @@ npm run tauri:dev
 ```bash
 # Build for production
 npm run tauri:build
+
+# Build frontend only
+npm run build
 ```
+
+### Available Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run setup` | Install all dependencies |
+| `npm start` | Start development server (Tauri + React) |
+| `npm run dev` | Start Vite dev server only |
+| `npm run build` | Build frontend for production |
+| `npm run tauri:dev` | Start Tauri development mode |
+| `npm run tauri:build` | Build Tauri application |
+| `npm run clean` | Remove node_modules, dist, and build artifacts |
+| `npm run clean:install` | Clean reinstall of dependencies |
+| `npm run check:frontend` | TypeScript type checking |
+| `npm run check:backend` | Rust cargo check |
 
 ## 📖 Usage
 
