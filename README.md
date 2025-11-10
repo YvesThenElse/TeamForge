@@ -25,6 +25,37 @@ TeamForge is a cross-platform desktop application built with Tauri 2.0 and React
 - **Rust** 1.70+ and cargo
 - **Git** (for repository cloning)
 
+#### Windows-Specific Requirements
+
+Tauri requires C++ build tools on Windows. Choose one of these options:
+
+**Option 1: Microsoft Visual C++ Build Tools (Recommended)**
+1. Download [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+2. Install with these workloads:
+   - ✅ Desktop development with C++
+   - ✅ Windows 10/11 SDK
+   - ✅ MSVC v143 build tools
+3. Configure Rust to use MSVC toolchain:
+   ```bash
+   rustup default stable-msvc
+   ```
+
+**Option 2: MinGW-w64**
+1. Download [MinGW-w64](https://www.mingw-w64.org/downloads/)
+2. Install and add `bin/` directory to your PATH
+3. Use GNU toolchain:
+   ```bash
+   rustup default stable-gnu
+   ```
+
+**Verify your setup:**
+```bash
+rustup show       # Check active toolchain
+rustc --version   # Verify Rust installation
+cargo --version   # Verify Cargo installation
+node --version    # Verify Node.js installation
+```
+
 ### Installation
 
 ```bash
