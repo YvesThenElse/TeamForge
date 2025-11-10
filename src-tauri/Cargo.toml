@@ -1,0 +1,30 @@
+[package]
+name = "teamforge"
+version = "0.1.0"
+description = "Visual interface to configure Claude Code sub-agents for git projects"
+authors = ["TeamForge Contributors"]
+license = "MIT"
+repository = "https://github.com/yourusername/teamforge"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+toml = "0.8"
+git2 = "0.18"
+walkdir = "2.4"
+ignore = "0.4"
+glob = "0.3"
+regex = "1.10"
+anyhow = "1.0"
+thiserror = "1.0"
+tokio = { version = "1.35", features = ["full"] }
+chrono = { version = "0.4", features = ["serde"] }
