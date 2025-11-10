@@ -4,12 +4,18 @@
   "description": "Visual interface to configure Claude Code sub-agents for git projects",
   "type": "module",
   "scripts": {
+    "setup": "npm install",
+    "start": "npm run tauri:dev",
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "clean": "node -e \"const fs=require('fs');['node_modules','dist','src-tauri/target'].forEach(d=>{try{fs.rmSync(d,{recursive:true,force:true})}catch(e){}})\"",
+    "clean:install": "npm run clean && npm install",
+    "check:frontend": "tsc --noEmit",
+    "check:backend": "cd src-tauri && cargo check"
   },
   "dependencies": {
     "react": "^18.2.0",
