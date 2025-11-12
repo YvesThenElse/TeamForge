@@ -3,27 +3,22 @@
   "version": "0.1.0",
   "description": "Visual interface to configure Claude Code sub-agents for git projects",
   "type": "module",
+  "main": "electron/main.js",
   "scripts": {
     "setup": "npm install",
-    "start": "npm run tauri:dev",
+    "start": "npm run electron:dev",
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
-    "clean": "node -e \"const fs=require('fs');['node_modules','dist','src-tauri/target'].forEach(d=>{try{fs.rmSync(d,{recursive:true,force:true})}catch(e){}})\"",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:1420 && electron .\"",
+    "electron:build": "npm run build && electron-builder",
+    "clean": "node -e \"const fs=require('fs');['node_modules','dist','build'].forEach(d=>{try{fs.rmSync(d,{recursive:true,force:true})}catch(e){}})\"",
     "clean:install": "npm run clean && npm install",
-    "check:frontend": "tsc --noEmit",
-    "check:backend": "cd src-tauri && cargo check"
+    "check:frontend": "tsc --noEmit"
   },
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@tauri-apps/api": "^2.0.0",
-    "@tauri-apps/plugin-dialog": "^2.0.0",
-    "@tauri-apps/plugin-fs": "^2.0.0",
-    "@tauri-apps/plugin-shell": "^2.0.0",
     "zustand": "^4.4.7",
     "react-hook-form": "^7.49.3",
     "zod": "^3.22.4",
@@ -36,18 +31,47 @@
     "@monaco-editor/react": "^4.6.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
-    "tailwind-merge": "^2.2.0"
+    "tailwind-merge": "^2.2.0",
+    "simple-git": "^3.25.0",
+    "glob": "^10.3.10",
+    "ignore": "^5.3.0",
+    "js-yaml": "^4.1.0",
+    "toml": "^3.0.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.0.0",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
     "@types/node": "^20.11.5",
+    "@types/js-yaml": "^4.0.9",
     "@vitejs/plugin-react": "^4.2.1",
     "typescript": "^5.3.3",
     "vite": "^5.0.11",
     "tailwindcss": "^3.4.1",
     "autoprefixer": "^10.4.17",
-    "postcss": "^8.4.33"
+    "postcss": "^8.4.33",
+    "electron": "^28.1.0",
+    "electron-builder": "^24.9.1",
+    "concurrently": "^8.2.2",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.teamforge.app",
+    "productName": "TeamForge",
+    "directories": {
+      "output": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "win": {
+      "target": ["nsis"]
+    },
+    "mac": {
+      "target": ["dmg"]
+    },
+    "linux": {
+      "target": ["AppImage"]
+    }
   }
 }

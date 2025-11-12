@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { useProjectStore } from "@/stores/projectStore";
-import * as tauri from "@/services/tauri";
-import { open } from "@tauri-apps/plugin-dialog";
+import * as electron from "@/services/electron";
 
 export function useProject() {
   const {
@@ -19,13 +18,9 @@ export function useProject() {
 
   const selectProjectFolder = useCallback(async () => {
     try {
-      const selected = await open({
-        directory: true,
-        multiple: false,
-        title: "Select Project Folder",
-      });
+      const selected = await electron.selectFolder();
 
-      if (selected && typeof selected === "string") {
+      if (selected) {
         setProjectPath(selected);
         return selected;
       }
@@ -42,7 +37,7 @@ export function useProject() {
       setError(null);
 
       try {
-        const result = await tauri.analyzeProject(path);
+        const result = await electron.analyzeProject(path);
         setAnalysis(result);
         return result;
       } catch (err) {
@@ -59,7 +54,7 @@ export function useProject() {
   const checkIfGitRepo = useCallback(
     async (path: string) => {
       try {
-        return await tauri.isGitRepo(path);
+        return await electron.isGitRepo(path);
       } catch (err) {
         console.error("Failed to check git repo:", err);
         return false;
@@ -74,7 +69,7 @@ export function useProject() {
       setError(null);
 
       try {
-        const result = await tauri.cloneRepo(url, targetPath);
+        const result = await electron.cloneRepo(url, targetPath);
         setProjectPath(targetPath);
         return result;
       } catch (err) {

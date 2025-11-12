@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { useAgentStore } from "@/stores/agentStore";
-import * as tauri from "@/services/tauri";
+import * as electron from "@/services/electron";
 
 export function useAgents() {
   const {
@@ -27,7 +27,7 @@ export function useAgents() {
   const loadLibrary = useCallback(async () => {
     setIsLoading(true);
     try {
-      const result = await tauri.getAgentLibrary();
+      const result = await electron.getAgentLibrary();
       setLibrary(result.agents);
       setCategories(result.categories as any);
     } catch (err) {
@@ -47,7 +47,7 @@ export function useAgents() {
 
       setIsLoading(true);
       try {
-        const results = await tauri.searchAgents(keyword);
+        const results = await electron.searchAgents(keyword);
         setLibrary(results);
       } catch (err) {
         console.error("Failed to search agents:", err);
@@ -63,7 +63,7 @@ export function useAgents() {
     async (technologies: string[]) => {
       setIsLoading(true);
       try {
-        const suggested = await tauri.getSuggestedAgents(technologies);
+        const suggested = await electron.getSuggestedAgents(technologies);
         // Auto-select suggested agents
         suggested.forEach((agent) => addAgent(agent.id));
         return suggested;
@@ -81,7 +81,7 @@ export function useAgents() {
   const generateAgentFile = useCallback(
     async (agentId: string, customInstructions?: string) => {
       try {
-        return await tauri.generateAgentFile(agentId, customInstructions);
+        return await electron.generateAgentFile(agentId, customInstructions);
       } catch (err) {
         console.error("Failed to generate agent file:", err);
         throw err;
@@ -94,7 +94,7 @@ export function useAgents() {
   const saveAgent = useCallback(
     async (agentContent: string, filePath: string) => {
       try {
-        return await tauri.saveAgentFile(agentContent, filePath);
+        return await electron.saveAgentFile(agentContent, filePath);
       } catch (err) {
         console.error("Failed to save agent file:", err);
         throw err;

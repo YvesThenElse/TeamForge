@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useConfigStore } from "@/stores/configStore";
-import * as tauri from "@/services/tauri";
+import * as electron from "@/services/electron";
 
 export function useConfig() {
   const {
@@ -23,7 +23,7 @@ export function useConfig() {
   const loadConfig = useCallback(
     async (projectPath: string) => {
       try {
-        const loadedConfig = await tauri.loadTeamforgeConfig(projectPath);
+        const loadedConfig = await electron.loadTeamforgeConfig(projectPath);
         setConfig(loadedConfig);
         return loadedConfig;
       } catch (err) {
@@ -43,7 +43,7 @@ export function useConfig() {
 
       setIsSaving(true);
       try {
-        await tauri.saveTeamforgeConfig(config, projectPath);
+        await electron.saveTeamforgeConfig(config, projectPath);
         setIsSaving(false);
         return true;
       } catch (err) {
@@ -64,7 +64,7 @@ export function useConfig() {
       technologies: string[]
     ) => {
       try {
-        const newConfig = await tauri.createDefaultTeamforgeConfig(
+        const newConfig = await electron.createDefaultTeamforgeConfig(
           projectName,
           projectType,
           projectPath,
@@ -87,7 +87,7 @@ export function useConfig() {
     }
 
     try {
-      const warnings = await tauri.validateTeamforgeConfig(config);
+      const warnings = await electron.validateTeamforgeConfig(config);
       setValidationResult({
         valid: warnings.length === 0,
         errors: [],
@@ -104,7 +104,7 @@ export function useConfig() {
   // Check if TeamForge exists in project
   const checkTeamforgeExists = useCallback(async (projectPath: string) => {
     try {
-      return await tauri.teamforgeExists(projectPath);
+      return await electron.teamforgeExists(projectPath);
     } catch (err) {
       console.error("Failed to check TeamForge existence:", err);
       return false;
@@ -114,7 +114,7 @@ export function useConfig() {
   // Initialize TeamForge structure
   const initializeTeamforge = useCallback(async (projectPath: string) => {
     try {
-      return await tauri.initializeTeamforge(projectPath);
+      return await electron.initializeTeamforge(projectPath);
     } catch (err) {
       console.error("Failed to initialize TeamForge:", err);
       throw err;
@@ -124,7 +124,7 @@ export function useConfig() {
   // Ensure .claude/agents/ directory exists
   const ensureClaudeAgentsDir = useCallback(async (projectPath: string) => {
     try {
-      return await tauri.ensureClaudeAgentsDir(projectPath);
+      return await electron.ensureClaudeAgentsDir(projectPath);
     } catch (err) {
       console.error("Failed to ensure .claude/agents/ directory:", err);
       throw err;

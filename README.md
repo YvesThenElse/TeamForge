@@ -2,7 +2,7 @@
 
 Visual interface to configure Claude Code sub-agents for git projects.
 
-Cross-platform desktop application built with Tauri 2.0 and React. Manage AI agent teams, analyze projects automatically, and generate ready-to-use Claude Code configurations.
+Cross-platform desktop application built with Electron and React. Manage AI agent teams, analyze projects automatically, and generate ready-to-use Claude Code configurations.
 
 ## Features
 
@@ -18,28 +18,7 @@ Cross-platform desktop application built with Tauri 2.0 and React. Manage AI age
 ### Prerequisites
 
 - Node.js 18+ and npm
-- Rust 1.70+ and cargo
 - Git
-
-#### Windows Setup
-
-Install C++ build tools (required for Tauri):
-
-**Option 1: Visual Studio Build Tools (Recommended)**
-```bash
-# 1. Download from https://visualstudio.microsoft.com/visual-cpp-build-tools/
-# 2. Install: Desktop development with C++, Windows SDK, MSVC build tools
-# 3. Configure Rust:
-rustup default stable-msvc
-```
-
-**Option 2: MinGW-w64**
-```bash
-# 1. Download from https://www.mingw-w64.org/downloads/
-# 2. Add bin/ to PATH
-# 3. Configure Rust:
-rustup default stable-gnu
-```
 
 ### Installation
 
@@ -52,13 +31,13 @@ npm install
 ### Development
 
 ```bash
-npm start
+npm start                      # Start Electron app in development mode
 ```
 
 ### Build
 
 ```bash
-npm run tauri:build
+npm run electron:build         # Build production application
 ```
 
 ## Usage
@@ -77,36 +56,36 @@ TeamForge/
 │   ├── components/       # UI components
 │   ├── hooks/            # Custom hooks
 │   ├── stores/           # Zustand state
+│   ├── services/         # Electron IPC wrappers
 │   └── types/            # TypeScript types
-├── src-tauri/            # Rust backend
-│   ├── commands/         # Tauri commands
-│   ├── services/         # Business logic
-│   ├── models/           # Data structures
-│   └── embedded/         # Agent library
+├── electron/             # Electron backend
+│   ├── main.js           # Main process entry
+│   ├── preload.js        # Secure IPC bridge
+│   └── handlers/         # IPC handlers (git, project, agent, config)
+│       └── agents/       # Embedded agent library
 └── .claude/agents/       # TeamForge self-development agents
 ```
 
 ## Technology Stack
 
-**Backend**: Tauri 2.0, Rust, git2, serde
+**Backend**: Electron 28, Node.js, simple-git, glob, js-yaml, toml
 **Frontend**: React 18, TypeScript, Zustand, Tailwind CSS, Radix UI
 
 ## Available Scripts
 
 | Command | Description |
 |---------|-------------|
-| `npm start` | Start development server |
-| `npm run tauri:build` | Build production app |
+| `npm start` | Start Electron app in development |
+| `npm run electron:build` | Build production app |
 | `npm run clean` | Remove build artifacts |
 | `npm run check:frontend` | TypeScript type check |
-| `npm run check:backend` | Rust cargo check |
 
 ## Contributing
 
 TeamForge uses Claude Code for its own development with 5 specialized agents:
 - `fullstack-developer` - General development
-- `rust-specialist` - Backend development
-- `react-specialist` - Frontend development
+- `frontend-developer` - React frontend
+- `backend-developer` - Node.js/Electron backend
 - `code-reviewer` - Code reviews
 - `tech-writer` - Documentation
 
@@ -114,16 +93,24 @@ Standard contribution workflow:
 1. Fork the repository
 2. Create feature branch
 3. Make changes
-4. Run checks
+4. Run checks (`npm run check:frontend`)
 5. Submit pull request
 
-## Troubleshooting
+## Development Benefits
 
-**Build errors on Windows**: Install Visual Studio Build Tools (see Prerequisites)
+**Simpler Setup:**
+- No Rust toolchain required
+- No C++ build tools needed
+- Pure JavaScript/TypeScript stack
 
-**Rust not found**: Install from https://rustup.rs/
+**Faster Development:**
+- Hot reload with Vite
+- Chrome DevTools for debugging
+- No Rust compilation time
 
-**dlltool.exe error**: Configure MSVC toolchain with `rustup default stable-msvc`
+**Easier Distribution:**
+- Electron Builder handles packaging
+- Supports Windows, macOS, Linux
 
 ## License
 
