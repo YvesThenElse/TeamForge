@@ -1,10 +1,19 @@
-// Tauri command wrappers with proper typing
-import { invoke } from "@tauri-apps/api/core";
+// DEPRECATED: Tauri command wrappers with proper typing
+// This file is kept for reference only. The app now uses Electron instead of Tauri.
+// See electron.ts for the new implementation.
+
+// import { invoke } from "@tauri-apps/api/core";
 import type {
   Agent,
   TeamForgeConfig,
   ProjectAnalysis,
 } from "@/types";
+
+// This is a mock invoke function to prevent errors
+// This file should not be used anymore
+const invoke = <T = any>(_cmd: string, _args?: any): Promise<T> => {
+  throw new Error("Tauri is deprecated. Use electron.ts instead.");
+};
 
 // ============================================================================
 // Git Commands

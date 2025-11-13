@@ -4,6 +4,10 @@ import type {
   TeamForgeConfig,
   ProjectAnalysis,
 } from "@/types";
+import type {
+  AgentFile,
+  AgentFileFrontmatter,
+} from "@/types/agentFile";
 
 // Access the Electron API exposed via preload script
 declare global {
@@ -53,6 +57,18 @@ declare global {
       teamforgeExists: (projectPath: string) => Promise<boolean>;
       initializeTeamforge: (projectPath: string) => Promise<string>;
       ensureClaudeAgentsDir: (projectPath: string) => Promise<string>;
+
+      // Agent File commands (for .claude/agents/)
+      listAgentFiles: (projectPath: string) => Promise<AgentFile[]>;
+      readAgentFile: (projectPath: string, agentId: string) => Promise<AgentFile>;
+      saveAgentFileContent: (
+        projectPath: string,
+        agentId: string,
+        frontmatter: AgentFileFrontmatter,
+        systemPrompt: string
+      ) => Promise<{ success: boolean; filePath: string }>;
+      deleteAgentFile: (projectPath: string, agentId: string) => Promise<{ success: boolean }>;
+      agentFileDirExists: (projectPath: string) => Promise<boolean>;
     };
   }
 }
@@ -62,7 +78,27 @@ declare global {
 // ============================================================================
 
 export async function selectFolder(): Promise<string | null> {
-  return window.electronAPI.selectFolder();
+  console.log("[electron.ts] Checking window.electronAPI...");
+
+  if (!window.electronAPI) {
+    console.error("[electron.ts] window.electronAPI is not defined!");
+    throw new Error("Electron API not available. Are you running in Electron?");
+  }
+
+  if (!window.electronAPI.selectFolder) {
+    console.error("[electron.ts] window.electronAPI.selectFolder is not defined!");
+    throw new Error("selectFolder method not available in Electron API");
+  }
+
+  console.log("[electron.ts] Calling window.electronAPI.selectFolder()");
+  try {
+    const result = await window.electronAPI.selectFolder();
+    console.log("[electron.ts] Result:", result);
+    return result;
+  } catch (err) {
+    console.error("[electron.ts] Error:", err);
+    throw err;
+  }
 }
 
 // ============================================================================
@@ -198,4 +234,46 @@ export async function ensureClaudeAgentsDir(
   projectPath: string
 ): Promise<string> {
   return window.electronAPI.ensureClaudeAgentsDir(projectPath);
+}
+
+// ============================================================================
+// Agent File Commands
+// ============================================================================
+
+export async function listAgentFiles(projectPath: string): Promise<AgentFile[]> {
+  return window.electronAPI.listAgentFiles(projectPath);
+}
+
+export async function readAgentFile(
+  projectPath: string,
+  agentId: string
+): Promise<AgentFile> {
+  return window.electronAPI.readAgentFile(projectPath, agentId);
+}
+
+export async function saveAgentFileContent(
+  projectPath: string,
+  agentId: string,
+  frontmatter: AgentFileFrontmatter,
+  systemPrompt: string
+): Promise<{ success: boolean; filePath: string }> {
+  return window.electronAPI.saveAgentFileContent(
+    projectPath,
+    agentId,
+    frontmatter,
+    systemPrompt
+  );
+}
+
+export async function deleteAgentFile(
+  projectPath: string,
+  agentId: string
+): Promise<{ success: boolean }> {
+  return window.electronAPI.deleteAgentFile(projectPath, agentId);
+}
+
+export async function agentFileDirExists(
+  projectPath: string
+): Promise<boolean> {
+  return window.electronAPI.agentFileDirExists(projectPath);
 }

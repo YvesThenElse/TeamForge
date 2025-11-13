@@ -6,7 +6,9 @@
       "Bash(node --version:*)",
       "Bash(npm install:*)",
       "Bash(cargo check:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(npm run check:frontend:*)",
+      "Bash(npm start)"
     ],
     "deny": [],
     "ask": []

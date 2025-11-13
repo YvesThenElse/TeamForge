@@ -1,12 +1,13 @@
-import { FolderOpen, Bot, Settings, FileText } from "lucide-react";
+import { FolderOpen, Bot, Settings, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
-  currentStep: "project" | "agents" | "config" | "export";
-  onStepChange: (step: "project" | "agents" | "config" | "export") => void;
+  currentStep: "project" | "agents" | "configure-agents" | "configure-teams";
+  onStepChange: (step: "project" | "agents" | "configure-agents" | "configure-teams") => void;
+  hasProjectSelected?: boolean;
 }
 
-export function Sidebar({ currentStep, onStepChange }: SidebarProps) {
+export function Sidebar({ currentStep, onStepChange, hasProjectSelected = false }: SidebarProps) {
   const steps = [
     {
       id: "project" as const,
@@ -16,21 +17,21 @@ export function Sidebar({ currentStep, onStepChange }: SidebarProps) {
     },
     {
       id: "agents" as const,
-      label: "Choose Agents",
+      label: "Agents",
       icon: Bot,
-      description: "Pick your team",
+      description: "Manage sub-agents",
     },
     {
-      id: "config" as const,
-      label: "Configure",
+      id: "configure-agents" as const,
+      label: "Configure Agent",
       icon: Settings,
-      description: "Customize settings",
+      description: "Agent library",
     },
     {
-      id: "export" as const,
-      label: "Generate",
-      icon: FileText,
-      description: "Export configuration",
+      id: "configure-teams" as const,
+      label: "Configure Team",
+      icon: Users,
+      description: "Create teams",
     },
   ];
 
@@ -40,14 +41,18 @@ export function Sidebar({ currentStep, onStepChange }: SidebarProps) {
         {steps.map((step) => {
           const Icon = step.icon;
           const isActive = currentStep === step.id;
+          const isDisabled = step.id !== "project" && !hasProjectSelected;
 
           return (
             <button
               key={step.id}
-              onClick={() => onStepChange(step.id)}
+              onClick={() => !isDisabled && onStepChange(step.id)}
+              disabled={isDisabled}
               className={cn(
                 "w-full flex items-start space-x-3 rounded-lg p-3 text-left transition-colors",
-                isActive
+                isDisabled
+                  ? "opacity-50 cursor-not-allowed"
+                  : isActive
                   ? "bg-primary text-primary-foreground"
                   : "hover:bg-accent hover:text-accent-foreground"
               )}

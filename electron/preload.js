@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+const { contextBridge, ipcRenderer } = require('electron');
 
 // Expose protected methods that allow the renderer process to use
 // ipcRenderer without exposing the entire object
@@ -54,4 +54,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('config:initialize', { projectPath }),
   ensureClaudeAgentsDir: (projectPath) =>
     ipcRenderer.invoke('config:ensureAgentsDir', { projectPath }),
+
+  // Agent File commands
+  listAgentFiles: (projectPath) =>
+    ipcRenderer.invoke('agentFile:list', { projectPath }),
+  readAgentFile: (projectPath, agentId) =>
+    ipcRenderer.invoke('agentFile:read', { projectPath, agentId }),
+  saveAgentFileContent: (projectPath, agentId, frontmatter, systemPrompt) =>
+    ipcRenderer.invoke('agentFile:save', {
+      projectPath,
+      agentId,
+      frontmatter,
+      systemPrompt,
+    }),
+  deleteAgentFile: (projectPath, agentId) =>
+    ipcRenderer.invoke('agentFile:delete', { projectPath, agentId }),
+  agentFileDirExists: (projectPath) =>
+    ipcRenderer.invoke('agentFile:dirExists', { projectPath }),
 });

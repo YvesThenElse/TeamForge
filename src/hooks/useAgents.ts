@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { useAgentStore } from "@/stores/agentStore";
 import * as electron from "@/services/electron";
 

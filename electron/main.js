@@ -12,6 +12,7 @@ import { registerGitHandlers } from './handlers/gitHandlers.js';
 import { registerProjectHandlers } from './handlers/projectHandlers.js';
 import { registerAgentHandlers } from './handlers/agentHandlers.js';
 import { registerConfigHandlers } from './handlers/configHandlers.js';
+import { registerAgentFileHandlers } from './handlers/agentFileHandlers.js';
 
 let mainWindow;
 
@@ -43,13 +44,21 @@ app.whenReady().then(() => {
   registerProjectHandlers(ipcMain);
   registerAgentHandlers(ipcMain);
   registerConfigHandlers(ipcMain);
+  registerAgentFileHandlers(ipcMain);
 
   // Basic dialog handler for file/folder selection
   ipcMain.handle('dialog:selectFolder', async () => {
-    const result = await dialog.showOpenDialog(mainWindow, {
-      properties: ['openDirectory'],
-    });
-    return result.canceled ? null : result.filePaths[0];
+    console.log('[Electron] dialog:selectFolder called');
+    try {
+      const result = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openDirectory'],
+      });
+      console.log('[Electron] Dialog result:', result);
+      return result.canceled ? null : result.filePaths[0];
+    } catch (err) {
+      console.error('[Electron] Error showing dialog:', err);
+      throw err;
+    }
   });
 
   app.on('activate', () => {

@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { useProjectStore } from "@/stores/projectStore";
 import * as electron from "@/services/electron";
+import { addRecentProject } from "@/lib/recentProjects";
 
 export function useProject() {
   const {
@@ -18,10 +19,32 @@ export function useProject() {
 
   const selectProjectFolder = useCallback(async () => {
     try {
+      console.log("[useProject] Calling electron.selectFolder()...");
       const selected = await electron.selectFolder();
+      console.log("[useProject] Selected folder:", selected);
 
       if (selected) {
         setProjectPath(selected);
+        // Automatically analyze the selected project
+        setIsAnalyzing(true);
+        try {
+          const result = await electron.analyzeProject(selected);
+          setAnalysis(result);
+
+          // Add to recent projects
+          const projectName = selected.split(/[\\/]/).filter(Boolean).pop() || selected;
+          addRecentProject({
+            path: selected,
+            name: projectName,
+            lastOpened: new Date().toISOString(),
+            projectType: result.projectType,
+          });
+        } catch (analysisErr) {
+          console.error("Failed to analyze project:", analysisErr);
+          // Still keep the project path even if analysis fails
+        } finally {
+          setIsAnalyzing(false);
+        }
         return selected;
       }
       return null;
@@ -29,16 +52,27 @@ export function useProject() {
       setError(err instanceof Error ? err.message : "Failed to select folder");
       return null;
     }
-  }, [setProjectPath, setError]);
+  }, [setProjectPath, setError, setIsAnalyzing, setAnalysis]);
 
   const analyzeProjectFolder = useCallback(
     async (path: string) => {
       setIsAnalyzing(true);
       setError(null);
+      setProjectPath(path);
 
       try {
         const result = await electron.analyzeProject(path);
         setAnalysis(result);
+
+        // Add to recent projects
+        const projectName = path.split(/[\\/]/).filter(Boolean).pop() || path;
+        addRecentProject({
+          path: path,
+          name: projectName,
+          lastOpened: new Date().toISOString(),
+          projectType: result.projectType,
+        });
+
         return result;
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : "Analysis failed";
@@ -48,7 +82,7 @@ export function useProject() {
         setIsAnalyzing(false);
       }
     },
-    [setAnalysis, setIsAnalyzing, setError]
+    [setAnalysis, setIsAnalyzing, setError, setProjectPath]
   );
 
   const checkIfGitRepo = useCallback(
