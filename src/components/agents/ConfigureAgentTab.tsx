@@ -1,26 +1,48 @@
 import { useState, useEffect } from "react";
-import { Plus, FolderPlus } from "lucide-react";
+import { Plus, FolderPlus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { useAgentStore } from "@/stores/agentStore";
+import { useProjectStore } from "@/stores/projectStore";
+import * as electron from "@/services/electron";
+import { AgentDetailModal } from "./AgentDetailModal";
+import type { Agent } from "@/types";
 
 export function ConfigureAgentTab() {
-  const { library, categories, setCategories } = useAgentStore();
+  const { library, categories, setLibrary, setCategories } = useAgentStore();
+  const { projectPath } = useProjectStore();
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [newCategoryName, setNewCategoryName] = useState("");
   const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
 
-  // Get unique categories from library
+  // Load template agents on mount
   useEffect(() => {
-    if (library.length > 0) {
-      const uniqueCategories = Array.from(
-        new Set(library.map((a) => a.category))
-      ).sort();
-      setCategories(uniqueCategories as any);
-    }
-  }, [library, setCategories]);
+    const loadTemplates = async () => {
+      setLoading(true);
+      try {
+        console.log("[ConfigureAgentTab] Loading template agents...");
+        const templates = await electron.loadTemplateAgents();
+        console.log("[ConfigureAgentTab] Loaded templates:", templates);
+        setLibrary(templates);
+
+        // Extract unique categories
+        const uniqueCategories = Array.from(
+          new Set(templates.map((a) => a.category))
+        ).sort();
+        setCategories(uniqueCategories as any);
+      } catch (err) {
+        console.error("[ConfigureAgentTab] Failed to load templates:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTemplates();
+  }, [setLibrary, setCategories]);
 
   const filteredAgents =
     selectedCategory === "all"
@@ -36,13 +58,57 @@ export function ConfigureAgentTab() {
     setIsAddingCategory(false);
   };
 
+  const handleAddAgent = async (agent: Agent) => {
+    if (!projectPath) {
+      alert("Please select a project first");
+      return;
+    }
+
+    try {
+      // Create frontmatter for the agent file
+      const frontmatter = {
+        name: agent.name,
+        description: agent.description,
+        tools: agent.tools || "all",
+        model: agent.model || "sonnet",
+      };
+
+      // Save agent file to project's .claude/agents/ directory
+      const result = await electron.saveAgentFileContent(
+        projectPath,
+        agent.id,
+        frontmatter,
+        agent.template || ""
+      );
+
+      if (result.success) {
+        alert(`Agent "${agent.name}" added successfully to ${result.filePath}`);
+        setSelectedAgent(null);
+      }
+    } catch (err) {
+      console.error("Failed to add agent:", err);
+      alert(`Failed to add agent: ${err}`);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading agent templates...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Predefined Agents Library</h2>
           <p className="text-muted-foreground mt-1">
-            Manage your collection of reusable sub-agents
+            {library.length} agent{library.length !== 1 ? 's' : ''} loaded from templates
           </p>
         </div>
       </div>
@@ -124,7 +190,11 @@ export function ConfigureAgentTab() {
       {/* Agents Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredAgents.map((agent) => (
-          <Card key={agent.id} className="hover:shadow-md transition-shadow">
+          <Card
+            key={agent.id}
+            className="hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => setSelectedAgent(agent)}
+          >
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -155,6 +225,16 @@ export function ConfigureAgentTab() {
           </Card>
         ))}
       </div>
+
+      {/* Agent Detail Modal */}
+      {selectedAgent && (
+        <AgentDetailModal
+          agent={selectedAgent}
+          projectPath={projectPath}
+          onClose={() => setSelectedAgent(null)}
+          onAddAgent={handleAddAgent}
+        />
+      )}
 
       {filteredAgents.length === 0 && (
         <Card>

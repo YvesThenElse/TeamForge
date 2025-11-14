@@ -8,6 +8,8 @@ export interface Agent {
   category: AgentCategory;
   template: string;
   suggestedFor: string[];
+  tools?: string | string[]; // Tools available to the agent
+  model?: "sonnet" | "opus" | "haiku" | "inherit"; // Model to use
 }
 
 export type AgentCategory =

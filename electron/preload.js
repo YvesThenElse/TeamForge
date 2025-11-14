@@ -71,4 +71,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('agentFile:delete', { projectPath, agentId }),
   agentFileDirExists: (projectPath) =>
     ipcRenderer.invoke('agentFile:dirExists', { projectPath }),
+  loadTemplateAgents: () =>
+    ipcRenderer.invoke('agentFile:loadTemplates'),
+  getClaudeInfo: (projectPath) =>
+    ipcRenderer.invoke('agentFile:getClaudeInfo', { projectPath }),
+  getGlobalClaudeInfo: () =>
+    ipcRenderer.invoke('agentFile:getGlobalClaudeInfo'),
 });

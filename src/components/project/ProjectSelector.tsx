@@ -1,19 +1,49 @@
 import { useState, useEffect } from "react";
-import { FolderOpen, GitBranch, Loader2, Clock, X } from "lucide-react";
+import { FolderOpen, GitBranch, Loader2, Clock, X, CheckCircle, XCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { useProject } from "@/hooks/useProject";
 import { getRecentProjects, removeRecentProject, type RecentProject } from "@/lib/recentProjects";
+import type { ClaudeInfo, GlobalClaudeInfo } from "@/types/claudeInfo";
+import * as electron from "@/services/electron";
 
 export function ProjectSelector() {
   const [gitUrl, setGitUrl] = useState("");
   const [targetPath, setTargetPath] = useState("");
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
+  const [projectClaudeInfo, setProjectClaudeInfo] = useState<ClaudeInfo | null>(null);
+  const [globalClaudeInfo, setGlobalClaudeInfo] = useState<GlobalClaudeInfo | null>(null);
   const { projectPath, analysis, isAnalyzing, selectProjectFolder, analyzeProjectFolder, cloneRepository } = useProject();
 
   useEffect(() => {
     setRecentProjects(getRecentProjects());
+
+    // Load global Claude config (from ~/.claude/)
+    const loadGlobalClaudeConfig = async () => {
+      try {
+        const info = await electron.getGlobalClaudeInfo();
+        setGlobalClaudeInfo(info);
+      } catch (err) {
+        console.error("Failed to load global Claude info:", err);
+      }
+    };
+    loadGlobalClaudeConfig();
+
+    // Load project Claude config (from project/.claude/)
+    if (projectPath) {
+      const loadProjectClaudeConfig = async () => {
+        try {
+          const info = await electron.getClaudeInfo(projectPath);
+          setProjectClaudeInfo(info);
+        } catch (err) {
+          console.error("Failed to load project Claude info:", err);
+        }
+      };
+      loadProjectClaudeConfig();
+    } else {
+      setProjectClaudeInfo(null);
+    }
   }, [projectPath]);
 
   const handleSelectFolder = async () => {
@@ -230,6 +260,201 @@ export function ProjectSelector() {
                 )}
               </Button>
             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Claude Configuration Info */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Project Claude Config (.claude/ in project) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Info className="h-5 w-5" />
+              <span>Project Claude Config</span>
+            </CardTitle>
+            <CardDescription>
+              Configuration in project's .claude/ directory
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!projectPath ? (
+              <div className="text-sm text-muted-foreground text-center py-4">
+                Select a project to view its Claude configuration
+              </div>
+            ) : projectClaudeInfo ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-center space-x-2">
+                    {projectClaudeInfo.exists ? (
+                      <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">.claude/</p>
+                      <p className="text-xs text-muted-foreground">
+                        {projectClaudeInfo.exists ? "Present" : "Not found"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    {projectClaudeInfo.agentsDir ? (
+                      <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">agents/</p>
+                      <p className="text-xs text-muted-foreground">
+                        {projectClaudeInfo.agentsDir ? "Present" : "Not found"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    {projectClaudeInfo.settingsFile ? (
+                      <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                    ) : (
+                      <Info className="h-4 w-4 text-muted-foreground shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">settings</p>
+                      <p className="text-xs text-muted-foreground">
+                        {projectClaudeInfo.settingsFile ? "Present" : "Optional"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {projectClaudeInfo.settings && Object.keys(projectClaudeInfo.settings).length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-sm font-medium mb-2">Settings:</p>
+                    <div className="bg-muted p-2 rounded-lg space-y-1 max-h-32 overflow-y-auto">
+                      {Object.entries(projectClaudeInfo.settings).map(([key, value]) => (
+                        <div key={key} className="flex justify-between text-xs gap-2">
+                          <span className="text-muted-foreground">{key}:</span>
+                          <span className="font-mono truncate">{String(value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {!projectClaudeInfo.exists && (
+                  <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2 mt-2">
+                    <p className="text-xs text-yellow-600 dark:text-yellow-500">
+                      No .claude/ directory found in this project
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Global Claude Config (~/.claude/) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Info className="h-5 w-5" />
+              <span>Global Claude Config</span>
+            </CardTitle>
+            <CardDescription>
+              User configuration in ~/.claude/ directory
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {globalClaudeInfo ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-center space-x-2">
+                    {globalClaudeInfo.exists ? (
+                      <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">~/.claude/</p>
+                      <p className="text-xs text-muted-foreground">
+                        {globalClaudeInfo.exists ? "Present" : "Not found"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    {globalClaudeInfo.agentsDir ? (
+                      <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">agents/</p>
+                      <p className="text-xs text-muted-foreground">
+                        {globalClaudeInfo.agentsDir ? `${globalClaudeInfo.agentsCount} agents` : "Not found"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    {globalClaudeInfo.settingsJsonFile ? (
+                      <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                    ) : (
+                      <Info className="h-4 w-4 text-muted-foreground shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">settings.json</p>
+                      <p className="text-xs text-muted-foreground">
+                        {globalClaudeInfo.settingsJsonFile ? "Present" : "Optional"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {globalClaudeInfo.claudePath && (
+                    <div className="flex items-center space-x-2 col-span-2">
+                      <Info className="h-4 w-4 text-blue-500 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">Path</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {globalClaudeInfo.claudePath}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {globalClaudeInfo.settings && Object.keys(globalClaudeInfo.settings).length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-sm font-medium mb-2">Settings:</p>
+                    <div className="bg-muted p-2 rounded-lg space-y-1 max-h-32 overflow-y-auto">
+                      {Object.entries(globalClaudeInfo.settings).map(([key, value]) => (
+                        <div key={key} className="flex justify-between text-xs gap-2">
+                          <span className="text-muted-foreground">{key}:</span>
+                          <span className="font-mono truncate">{String(value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {!globalClaudeInfo.exists && (
+                  <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2 mt-2">
+                    <p className="text-xs text-yellow-600 dark:text-yellow-500">
+                      No global Claude configuration found. Install Claude Code to create ~/.claude/ directory.
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

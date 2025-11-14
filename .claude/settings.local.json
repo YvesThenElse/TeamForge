@@ -8,7 +8,9 @@
       "Bash(cargo check:*)",
       "Bash(git add:*)",
       "Bash(npm run check:frontend:*)",
-      "Bash(npm start)"
+      "Bash(npm start)",
+      "Bash(taskkill:*)",
+      "Bash(netstat:*)"
     ],
     "deny": [],
     "ask": []

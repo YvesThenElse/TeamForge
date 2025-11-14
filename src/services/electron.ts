@@ -8,6 +8,7 @@ import type {
   AgentFile,
   AgentFileFrontmatter,
 } from "@/types/agentFile";
+import type { ClaudeInfo, GlobalClaudeInfo } from "@/types/claudeInfo";
 
 // Access the Electron API exposed via preload script
 declare global {
@@ -69,6 +70,9 @@ declare global {
       ) => Promise<{ success: boolean; filePath: string }>;
       deleteAgentFile: (projectPath: string, agentId: string) => Promise<{ success: boolean }>;
       agentFileDirExists: (projectPath: string) => Promise<boolean>;
+      loadTemplateAgents: () => Promise<Agent[]>;
+      getClaudeInfo: (projectPath: string) => Promise<ClaudeInfo>;
+      getGlobalClaudeInfo: () => Promise<GlobalClaudeInfo>;
     };
   }
 }
@@ -276,4 +280,16 @@ export async function agentFileDirExists(
   projectPath: string
 ): Promise<boolean> {
   return window.electronAPI.agentFileDirExists(projectPath);
+}
+
+export async function loadTemplateAgents(): Promise<Agent[]> {
+  return window.electronAPI.loadTemplateAgents();
+}
+
+export async function getClaudeInfo(projectPath: string): Promise<ClaudeInfo> {
+  return window.electronAPI.getClaudeInfo(projectPath);
+}
+
+export async function getGlobalClaudeInfo(): Promise<GlobalClaudeInfo> {
+  return window.electronAPI.getGlobalClaudeInfo();
 }
