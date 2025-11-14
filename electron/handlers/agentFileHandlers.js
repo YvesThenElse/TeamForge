@@ -188,14 +188,40 @@ export function registerAgentFileHandlers(ipcMain) {
           agentsDir: false,
           settingsFile: false,
           settings: null,
+          agents: [],
+          skillsDir: false,
+          skills: [],
         };
       }
 
-      // Check for agents directory
+      // Check for agents directory and list agents
       let agentsDirExists = false;
+      let agents = [];
       try {
-        await fs.access(path.join(claudeDir, 'agents'));
+        const agentsPath = path.join(claudeDir, 'agents');
+        await fs.access(agentsPath);
         agentsDirExists = true;
+
+        // List agent files
+        const files = await fs.readdir(agentsPath);
+        agents = files
+          .filter((f) => f.endsWith('.md'))
+          .map((f) => path.basename(f, '.md'));
+      } catch {}
+
+      // Check for skills directory and list skills
+      let skillsDirExists = false;
+      let skills = [];
+      try {
+        const skillsPath = path.join(claudeDir, 'skills');
+        await fs.access(skillsPath);
+        skillsDirExists = true;
+
+        // List skill directories
+        const files = await fs.readdir(skillsPath, { withFileTypes: true });
+        skills = files
+          .filter((dirent) => dirent.isDirectory())
+          .map((dirent) => dirent.name);
       } catch {}
 
       // Check for settings file
@@ -231,6 +257,9 @@ export function registerAgentFileHandlers(ipcMain) {
         settingsFile: settingsFileExists,
         settings,
         claudePath: claudeDir,
+        agents,
+        skillsDir: skillsDirExists,
+        skills,
       };
     } catch (err) {
       console.error('[agentFile:getClaudeInfo] Failed:', err);
@@ -239,6 +268,9 @@ export function registerAgentFileHandlers(ipcMain) {
         agentsDir: false,
         settingsFile: false,
         settings: null,
+        agents: [],
+        skillsDir: false,
+        skills: [],
       };
     }
   });

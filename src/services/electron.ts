@@ -9,6 +9,7 @@ import type {
   AgentFileFrontmatter,
 } from "@/types/agentFile";
 import type { ClaudeInfo, GlobalClaudeInfo } from "@/types/claudeInfo";
+import type { Skill, SkillFrontmatter } from "@/types/skill";
 
 // Access the Electron API exposed via preload script
 declare global {
@@ -73,6 +74,19 @@ declare global {
       loadTemplateAgents: () => Promise<Agent[]>;
       getClaudeInfo: (projectPath: string) => Promise<ClaudeInfo>;
       getGlobalClaudeInfo: () => Promise<GlobalClaudeInfo>;
+
+      // Skill commands
+      listSkills: (projectPath: string) => Promise<Skill[]>;
+      readSkill: (projectPath: string, skillId: string) => Promise<Skill>;
+      saveSkill: (
+        projectPath: string,
+        skillId: string,
+        frontmatter: SkillFrontmatter,
+        instructions: string
+      ) => Promise<{ success: boolean; skillPath: string }>;
+      deleteSkill: (projectPath: string, skillId: string) => Promise<{ success: boolean }>;
+      skillDirExists: (projectPath: string) => Promise<boolean>;
+      ensureSkillsDir: (projectPath: string) => Promise<string>;
     };
   }
 }
@@ -292,4 +306,48 @@ export async function getClaudeInfo(projectPath: string): Promise<ClaudeInfo> {
 
 export async function getGlobalClaudeInfo(): Promise<GlobalClaudeInfo> {
   return window.electronAPI.getGlobalClaudeInfo();
+}
+
+// ============================================================================
+// Skills
+// ============================================================================
+
+export async function listSkills(projectPath: string): Promise<Skill[]> {
+  return window.electronAPI.listSkills(projectPath);
+}
+
+export async function readSkill(
+  projectPath: string,
+  skillId: string
+): Promise<Skill> {
+  return window.electronAPI.readSkill(projectPath, skillId);
+}
+
+export async function saveSkill(
+  projectPath: string,
+  skillId: string,
+  frontmatter: SkillFrontmatter,
+  instructions: string
+): Promise<{ success: boolean; skillPath: string }> {
+  return window.electronAPI.saveSkill(
+    projectPath,
+    skillId,
+    frontmatter,
+    instructions
+  );
+}
+
+export async function deleteSkill(
+  projectPath: string,
+  skillId: string
+): Promise<{ success: boolean }> {
+  return window.electronAPI.deleteSkill(projectPath, skillId);
+}
+
+export async function skillDirExists(projectPath: string): Promise<boolean> {
+  return window.electronAPI.skillDirExists(projectPath);
+}
+
+export async function ensureSkillsDir(projectPath: string): Promise<string> {
+  return window.electronAPI.ensureSkillsDir(projectPath);
 }

@@ -77,4 +77,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('agentFile:getClaudeInfo', { projectPath }),
   getGlobalClaudeInfo: () =>
     ipcRenderer.invoke('agentFile:getGlobalClaudeInfo'),
+
+  // Skill commands
+  listSkills: (projectPath) =>
+    ipcRenderer.invoke('skill:list', { projectPath }),
+  readSkill: (projectPath, skillId) =>
+    ipcRenderer.invoke('skill:read', { projectPath, skillId }),
+  saveSkill: (projectPath, skillId, frontmatter, instructions) =>
+    ipcRenderer.invoke('skill:save', {
+      projectPath,
+      skillId,
+      frontmatter,
+      instructions,
+    }),
+  deleteSkill: (projectPath, skillId) =>
+    ipcRenderer.invoke('skill:delete', { projectPath, skillId }),
+  skillDirExists: (projectPath) =>
+    ipcRenderer.invoke('skill:dirExists', { projectPath }),
+  ensureSkillsDir: (projectPath) =>
+    ipcRenderer.invoke('skill:ensureDir', { projectPath }),
 });

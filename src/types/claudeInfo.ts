@@ -6,6 +6,9 @@ export interface ClaudeInfo {
   settingsFile: boolean;
   settings: Record<string, any> | null;
   claudePath?: string;
+  agents?: string[]; // List of agent names (without .md extension)
+  skillsDir?: boolean; // Whether .claude/skills/ directory exists
+  skills?: string[]; // List of skill names (directory names)
 }
 
 export interface GlobalClaudeInfo {

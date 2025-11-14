@@ -314,6 +314,20 @@ export function ProjectSelector() {
                   </div>
 
                   <div className="flex items-center space-x-2">
+                    {projectClaudeInfo.skillsDir ? (
+                      <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">skills/</p>
+                      <p className="text-xs text-muted-foreground">
+                        {projectClaudeInfo.skillsDir ? "Present" : "Not found"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
                     {projectClaudeInfo.settingsFile ? (
                       <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
                     ) : (
@@ -458,6 +472,85 @@ export function ProjectSelector() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Project Claude Agents and Skills Lists */}
+      {projectPath && projectClaudeInfo && (
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Project Claude Agents */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Info className="h-5 w-5" />
+                <span>Project Claude Agents</span>
+              </CardTitle>
+              <CardDescription>
+                Agents configured in .claude/agents/ directory
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {projectClaudeInfo.agents && projectClaudeInfo.agents.length > 0 ? (
+                <div>
+                  <p className="text-sm font-medium mb-2">
+                    Agents ({projectClaudeInfo.agents.length}):
+                  </p>
+                  <div className="bg-muted p-2 rounded-lg space-y-1 max-h-60 overflow-y-auto">
+                    {projectClaudeInfo.agents.map((agent) => (
+                      <div
+                        key={agent}
+                        className="flex items-center space-x-2 text-sm p-1.5 rounded hover:bg-background/50 transition-colors"
+                      >
+                        <CheckCircle className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                        <span className="font-mono text-xs">{agent}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground text-center py-4">
+                  No agents configured yet
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Project Claude Skills */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Info className="h-5 w-5" />
+                <span>Project Claude Skills</span>
+              </CardTitle>
+              <CardDescription>
+                Skills configured in .claude/skills/ directory
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {projectClaudeInfo.skills && projectClaudeInfo.skills.length > 0 ? (
+                <div>
+                  <p className="text-sm font-medium mb-2">
+                    Skills ({projectClaudeInfo.skills.length}):
+                  </p>
+                  <div className="bg-muted p-2 rounded-lg space-y-1 max-h-60 overflow-y-auto">
+                    {projectClaudeInfo.skills.map((skill) => (
+                      <div
+                        key={skill}
+                        className="flex items-center space-x-2 text-sm p-1.5 rounded hover:bg-background/50 transition-colors"
+                      >
+                        <CheckCircle className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                        <span className="font-mono text-xs">{skill}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground text-center py-4">
+                  No skills configured yet
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
