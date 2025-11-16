@@ -6,13 +6,14 @@ import { ProjectAgentsTab } from "@/components/agents/ProjectAgentsTab";
 import { ConfigureAgentTab } from "@/components/agents/ConfigureAgentTab";
 import { ConfigureTeamTab } from "@/components/agents/ConfigureTeamTab";
 import { SkillsTab } from "@/components/skills/SkillsTab";
+import { SecurityTab } from "@/components/security/SecurityTab";
 import { SettingsTab } from "@/components/settings/SettingsTab";
 import { HelpTab } from "@/components/help/HelpTab";
 import { useProjectStore } from "@/stores/projectStore";
 
 export function MainLayout() {
   const [currentStep, setCurrentStep] = useState<
-    "project" | "agents" | "configure-agents" | "configure-teams" | "skills" | "settings" | "help"
+    "project" | "agents" | "configure-agents" | "configure-teams" | "skills" | "security" | "settings" | "help"
   >("project");
 
   const { projectPath } = useProjectStore();
@@ -29,6 +30,8 @@ export function MainLayout() {
         return <ConfigureTeamTab />;
       case "skills":
         return <SkillsTab />;
+      case "security":
+        return <SecurityTab />;
       case "settings":
         return <SettingsTab />;
       case "help":
