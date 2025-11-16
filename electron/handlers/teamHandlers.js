@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import yaml from 'js-yaml';
 
 export function registerTeamHandlers(ipcMain) {
   // List all teams
@@ -85,44 +86,87 @@ export function registerTeamHandlers(ipcMain) {
     }
   });
 
-  // Deploy a team (generate agent files with chaining)
+  // Deploy a team as a skill (create .claude/skills/team-name/SKILL.md)
   ipcMain.handle('team:deploy', async (event, { projectPath, team, agentLibrary }) => {
     try {
-      const agentsDir = path.join(projectPath, '.claude', 'agents');
+      // Create skill ID from team name (lowercase, hyphens only)
+      const skillId = team.name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
 
-      // Create agents directory if it doesn't exist
-      await fs.mkdir(agentsDir, { recursive: true });
+      const skillsDir = path.join(projectPath, '.claude', 'skills');
+      const skillPath = path.join(skillsDir, skillId);
+      const skillFilePath = path.join(skillPath, 'SKILL.md');
+
+      // Create skill directory
+      await fs.mkdir(skillPath, { recursive: true });
 
       // Sort workflow by order
       const sortedWorkflow = [...team.workflow].sort((a, b) => a.order - b.order);
 
-      // Generate agent files with chaining instructions
-      for (let i = 0; i < sortedWorkflow.length; i++) {
-        const node = sortedWorkflow[i];
+      // Build workflow description
+      let workflowDescription = `This skill coordinates a team of ${sortedWorkflow.length} specialized agents working in sequence:\n\n`;
+
+      sortedWorkflow.forEach((node, index) => {
         const agent = agentLibrary.find((a) => a.id === node.agentId);
-
-        if (!agent) continue;
-
-        let content = agent.template;
-
-        // Add chaining instructions if enabled
-        if (team.chainingEnabled && i < sortedWorkflow.length - 1) {
-          const nextNode = sortedWorkflow[i + 1];
-          const nextAgent = agentLibrary.find((a) => a.id === nextNode.agentId);
-
-          if (nextAgent) {
-            content += `\n\n## Workflow Chaining\n\n`;
-            content += `After completing your task, hand off to the next agent: **${nextAgent.name}**\n`;
-            content += `\nNext agent's role: ${nextAgent.description}\n`;
-          }
+        if (agent) {
+          workflowDescription += `${index + 1}. **${agent.name}**: ${agent.description}\n`;
         }
+      });
 
-        // Write agent file
-        const agentPath = path.join(agentsDir, `${agent.id}.md`);
-        await fs.writeFile(agentPath, content, 'utf-8');
+      // Build detailed instructions
+      let instructions = `# ${team.name}\n\n`;
+      instructions += `${team.description || 'Team workflow for coordinating multiple agents.'}\n\n`;
+      instructions += `## Team Workflow\n\n`;
+      instructions += workflowDescription;
+      instructions += `\n## How to Use This Team\n\n`;
+      instructions += `This team workflow should be used when the task requires the coordinated effort of multiple specialized agents. `;
+      instructions += `Each agent in the sequence builds upon the work of the previous agent, creating a comprehensive solution.\n\n`;
+
+      if (team.chainingEnabled) {
+        instructions += `## Workflow Execution\n\n`;
+        instructions += `The agents should be invoked in the following order:\n\n`;
+
+        sortedWorkflow.forEach((node, index) => {
+          const agent = agentLibrary.find((a) => a.id === node.agentId);
+          if (agent) {
+            instructions += `### Step ${index + 1}: ${agent.name}\n\n`;
+            instructions += `**Role**: ${agent.description}\n\n`;
+
+            if (index < sortedWorkflow.length - 1) {
+              const nextAgent = agentLibrary.find((a) => a.id === sortedWorkflow[index + 1].agentId);
+              instructions += `**Next Step**: After completing this step, hand off to ${nextAgent.name}.\n\n`;
+            } else {
+              instructions += `**Final Step**: This is the final agent in the workflow. Complete the task and present the final results.\n\n`;
+            }
+          }
+        });
       }
 
-      return `Deployed ${sortedWorkflow.length} agents successfully`;
+      instructions += `## Agent Details\n\n`;
+      sortedWorkflow.forEach((node) => {
+        const agent = agentLibrary.find((a) => a.id === node.agentId);
+        if (agent) {
+          instructions += `### ${agent.name}\n\n`;
+          instructions += `- **ID**: ${agent.id}\n`;
+          instructions += `- **Category**: ${agent.category}\n`;
+          instructions += `- **Tools**: ${Array.isArray(agent.tools) ? agent.tools.join(', ') : agent.tools}\n`;
+          instructions += `- **Model**: ${agent.model || 'sonnet'}\n\n`;
+        }
+      });
+
+      // Create frontmatter
+      const frontmatter = {
+        name: team.name,
+        description: `Team workflow: ${team.description || 'Coordinated agent workflow'}`,
+      };
+
+      // Format skill file
+      const yamlContent = yaml.dump(frontmatter, { lineWidth: -1 });
+      const skillContent = `---\n${yamlContent}---\n\n${instructions}`;
+
+      // Write skill file
+      await fs.writeFile(skillFilePath, skillContent, 'utf-8');
+
+      return `Team deployed as skill: ${skillId}\nLocation: .claude/skills/${skillId}/SKILL.md`;
     } catch (error) {
       throw new Error(`Failed to deploy team: ${error.message}`);
     }

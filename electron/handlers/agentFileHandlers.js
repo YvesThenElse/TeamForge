@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import yaml from 'js-yaml';
+import os from 'os';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -278,7 +279,6 @@ export function registerAgentFileHandlers(ipcMain) {
   // Get global Claude configuration info from user home directory
   ipcMain.handle('agentFile:getGlobalClaudeInfo', async () => {
     try {
-      const os = await import('os');
       const homeDir = os.homedir();
       const claudeDir = path.join(homeDir, '.claude');
 

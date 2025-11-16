@@ -9,7 +9,7 @@ import * as electron from "@/services/electron";
 
 export function SecurityTab() {
   const { projectPath } = useProjectStore();
-  const { config, setAgentTools, addToolToAgent, removeToolFromAgent, addToolToAllAgents, removeToolFromAllAgents, setAgents } = useSecurityStore();
+  const { config, addToolToAgent, removeToolFromAgent, addToolToAllAgents, removeToolFromAllAgents, setAgents } = useSecurityStore();
   const [selectedTool, setSelectedTool] = useState<ToolName | null>(null);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -90,7 +90,7 @@ export function SecurityTab() {
           ...agentFile.frontmatter,
           tools: agent.tools.length === 1 && agent.tools[0] === '*'
             ? '*'
-            : agent.tools,
+            : agent.tools.join(', '),
         };
 
         await electron.saveAgentFileContent(

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Search, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAgentStore } from "@/stores/agentStore";
@@ -14,20 +14,38 @@ interface AgentSidebarProps {
 
 export function AgentSidebar({ isOpen, onToggle, onAddAgent }: AgentSidebarProps) {
   const { library } = useAgentStore();
-  const { currentTeam } = useTeamStore();
+  const currentTeam = useTeamStore((state) => state.currentTeam);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+
+  // Extract unique categories from library
+  const categories = useMemo(() => {
+    const cats = new Set(library.map((agent) => agent.category).filter(Boolean));
+    return Array.from(cats).sort();
+  }, [library]);
 
   const filteredAgents = useMemo(() => {
-    if (!searchQuery.trim()) return library;
+    let agents = library;
 
-    const query = searchQuery.toLowerCase();
-    return library.filter(
-      (agent) =>
-        agent.name.toLowerCase().includes(query) ||
-        agent.description.toLowerCase().includes(query) ||
-        agent.tags.some((tag) => tag.toLowerCase().includes(query))
-    );
-  }, [library, searchQuery]);
+    // Filter by category
+    if (selectedCategory !== "all") {
+      agents = agents.filter((agent) => agent.category === selectedCategory);
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      agents = agents.filter(
+        (agent) =>
+          agent.name.toLowerCase().includes(query) ||
+          agent.description.toLowerCase().includes(query) ||
+          agent.tags.some((tag) => tag.toLowerCase().includes(query))
+      );
+    }
+
+    return agents;
+  }, [library, searchQuery, selectedCategory]);
 
   const isAgentInWorkflow = (agentId: string) => {
     return currentTeam?.workflow.some((node) => node.agentId === agentId) || false;
@@ -66,6 +84,56 @@ export function AgentSidebar({ isOpen, onToggle, onAddAgent }: AgentSidebarProps
                 className="pl-8"
               />
             </div>
+          </div>
+
+          {/* Category Filter - Collapsable */}
+          <div className="border-b">
+            <button
+              onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+              className="w-full p-3 flex items-center justify-between hover:bg-muted/50 transition-colors"
+            >
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Categories
+              </div>
+              {isCategoryOpen ? (
+                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              )}
+            </button>
+
+            {isCategoryOpen && (
+              <div className="p-3 pt-0">
+                <div className="flex flex-col gap-1">
+                  <button
+                    onClick={() => setSelectedCategory("all")}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors text-left ${
+                      selectedCategory === "all"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted hover:bg-muted/80"
+                    }`}
+                  >
+                    All ({library.length})
+                  </button>
+                  {categories.map((cat) => {
+                    const count = library.filter((a) => a.category === cat).length;
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`px-3 py-2 rounded-md text-sm font-medium transition-colors text-left ${
+                          selectedCategory === cat
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted hover:bg-muted/80"
+                        }`}
+                      >
+                        {cat} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Agent list */}

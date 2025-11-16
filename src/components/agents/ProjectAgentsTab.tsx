@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, Loader2, GitBranch, ArrowRight, FolderOpen, CheckCircle, XCircle, Info } from "lucide-react";
+import { AlertCircle, Loader2, GitBranch, ArrowRight, FolderOpen, CheckCircle, XCircle, Info, Circle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { useProjectStore } from "@/stores/projectStore";
 import * as electron from "@/services/electron";
 import type { AgentFile } from "@/types/agentFile";
 import type { ClaudeInfo } from "@/types/claudeInfo";
+import type { TeamForgeConfig } from "@/types/config";
 import { AgentDetailModal } from "./AgentDetailModal";
 
 export function ProjectAgentsTab() {
@@ -14,11 +15,13 @@ export function ProjectAgentsTab() {
   const [loading, setLoading] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<AgentFile | null>(null);
   const [claudeInfo, setClaudeInfo] = useState<ClaudeInfo | null>(null);
+  const [config, setConfig] = useState<TeamForgeConfig | null>(null);
 
   useEffect(() => {
     if (projectPath) {
       loadAgents();
       loadClaudeInfo();
+      loadConfig();
     }
   }, [projectPath]);
 
@@ -47,8 +50,38 @@ export function ProjectAgentsTab() {
     }
   };
 
+  const loadConfig = async () => {
+    if (!projectPath) return;
+
+    try {
+      const cfg = await electron.loadTeamforgeConfig(projectPath);
+      setConfig(cfg);
+    } catch (err) {
+      console.error("Failed to load TeamForge config:", err);
+      setConfig(null);
+    }
+  };
+
   const handleAgentClick = (agent: AgentFile) => {
     setSelectedAgent(agent);
+  };
+
+  const handleRemoveAgent = async (agentId: string) => {
+    if (!projectPath) return;
+
+    if (!confirm("Are you sure you want to remove this agent from the project?")) {
+      return;
+    }
+
+    try {
+      await electron.deleteAgentFile(projectPath, agentId);
+      await loadAgents();
+      await loadConfig();
+      setSelectedAgent(null);
+    } catch (err) {
+      console.error("Failed to remove agent:", err);
+      alert("Failed to remove agent. Check console for details.");
+    }
   };
 
   if (!projectPath) {
@@ -228,45 +261,107 @@ export function ProjectAgentsTab() {
                 <span>Agent Workflow</span>
               </CardTitle>
               <CardDescription>
-                Visual representation of your agent configuration
+                {config?.workflow?.enabled
+                  ? "Sequential workflow - agents execute in order"
+                  : "Independent agents - no specific execution order"}
               </CardDescription>
             </div>
-            <Badge variant="outline">{agents.length} agents</Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">{agents.length} agents</Badge>
+              {config?.workflow?.enabled && (
+                <Badge variant="default" className="bg-blue-500">
+                  Workflow Enabled
+                </Badge>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           {/* Visual workflow display */}
-          <div className="flex flex-wrap gap-3 items-center p-4 bg-muted/30 rounded-lg">
-            {agents.map((agent, index) => (
-              <div key={agent.id} className="flex items-center">
-                <button
-                  onClick={() => handleAgentClick(agent)}
-                  className="group relative px-4 py-3 bg-card border-2 border-border rounded-lg hover:border-primary hover:shadow-md transition-all cursor-pointer"
-                >
-                  <div className="flex items-center space-x-2">
-                    <div className="h-2 w-2 rounded-full bg-primary"></div>
-                    <span className="font-medium">{agent.name}</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {agent.model || "sonnet"}
-                  </div>
+          <div className={`flex flex-wrap gap-3 items-center p-4 rounded-lg ${
+            config?.workflow?.enabled
+              ? 'bg-blue-500/10 border-2 border-blue-500/20'
+              : 'bg-muted/30 border-2 border-dashed border-muted-foreground/20'
+          }`}>
+            {agents.map((agent, index) => {
+              const workflowStep = config?.workflow?.sequence?.find(
+                (step) => step.agentId === agent.id
+              );
+              const order = workflowStep?.order;
 
-                  {/* Hover tooltip */}
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-popover border border-border rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                    <p className="text-sm font-medium">{agent.name}</p>
-                    <p className="text-xs text-muted-foreground max-w-xs truncate">
-                      {agent.description}
-                    </p>
-                  </div>
-                </button>
+              return (
+                <div key={agent.id} className="flex items-center">
+                  <button
+                    onClick={() => handleAgentClick(agent)}
+                    className={`group relative px-4 py-3 bg-card rounded-lg hover:shadow-md transition-all cursor-pointer ${
+                      config?.workflow?.enabled
+                        ? 'border-2 border-blue-500'
+                        : 'border-2 border-border'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      {config?.workflow?.enabled ? (
+                        <div className="h-6 w-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">
+                          {order !== undefined ? order + 1 : index + 1}
+                        </div>
+                      ) : (
+                        <Circle className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      <span className="font-medium">{agent.name}</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {agent.model || "sonnet"}
+                    </div>
 
-                {/* Connector arrow */}
-                {index < agents.length - 1 && (
-                  <ArrowRight className="h-4 w-4 text-muted-foreground mx-2" />
-                )}
-              </div>
-            ))}
+                    {/* Hover tooltip */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-popover border border-border rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                      <p className="text-sm font-medium">{agent.name}</p>
+                      <p className="text-xs text-muted-foreground max-w-xs truncate">
+                        {agent.description}
+                      </p>
+                      {config?.workflow?.enabled && order !== undefined && (
+                        <p className="text-xs text-blue-500 mt-1">
+                          Execution order: {order + 1}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+
+                  {/* Connector arrow - only show for workflow */}
+                  {config?.workflow?.enabled && index < agents.length - 1 && (
+                    <ArrowRight className="h-5 w-5 text-blue-500 mx-2 font-bold" />
+                  )}
+                </div>
+              );
+            })}
           </div>
+
+          {/* Workflow Info */}
+          {config?.workflow?.enabled ? (
+            <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <div className="flex items-start gap-2">
+                <Info className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-blue-600 dark:text-blue-400">
+                  <p className="font-medium">Sequential Workflow Active</p>
+                  <p className="text-xs mt-1 text-blue-500">
+                    Agents will execute in the numbered order shown above. Each agent can pass context to the next.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-start gap-2">
+                <Info className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-muted-foreground">
+                  <p className="font-medium">Independent Agents</p>
+                  <p className="text-xs mt-1">
+                    These agents work independently without a specific execution order. Configure a workflow in the "Configure Team" tab to enable sequential execution.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -329,6 +424,8 @@ export function ProjectAgentsTab() {
             // Agent is already deployed, no action needed
             alert("This agent is already deployed in the project");
           }}
+          onRemoveAgent={handleRemoveAgent}
+          isDeployed={true}
         />
       )}
     </div>

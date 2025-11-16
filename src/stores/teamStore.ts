@@ -82,10 +82,15 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   // Workflow actions
   addAgentToWorkflow: (agentId, position) =>
     set((state) => {
-      if (!state.currentTeam) return state;
+      console.log('[teamStore] addAgentToWorkflow called:', agentId, position);
+      if (!state.currentTeam) {
+        console.log('[teamStore] No currentTeam, returning');
+        return state;
+      }
 
       // Check if agent already exists
       if (state.currentTeam.workflow.some((node) => node.agentId === agentId)) {
+        console.log('[teamStore] Agent already exists in workflow');
         return state;
       }
 
@@ -105,6 +110,9 @@ export const useTeamStore = create<TeamState>((set, get) => ({
         workflow: [...state.currentTeam.workflow, newNode],
         updatedAt: new Date().toISOString(),
       };
+
+      console.log('[teamStore] Updated workflow:', updatedTeam.workflow);
+      console.log('[teamStore] Workflow length:', updatedTeam.workflow.length);
 
       return {
         currentTeam: updatedTeam,

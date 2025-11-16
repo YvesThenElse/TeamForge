@@ -18,7 +18,7 @@ interface SecurityState {
 
 export const useSecurityStore = create<SecurityState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       config: {
         agents: [],
       },

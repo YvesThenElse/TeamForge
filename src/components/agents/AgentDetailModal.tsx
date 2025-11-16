@@ -1,4 +1,4 @@
-import { X, Copy, Check } from "lucide-react";
+import { X, Copy, Check, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -9,9 +9,11 @@ interface AgentDetailModalProps {
   projectPath: string | null;
   onClose: () => void;
   onAddAgent: (agent: Agent) => void;
+  onRemoveAgent?: (agentId: string) => void;
+  isDeployed?: boolean;
 }
 
-export function AgentDetailModal({ agent, projectPath, onClose, onAddAgent }: AgentDetailModalProps) {
+export function AgentDetailModal({ agent, projectPath, onClose, onAddAgent, onRemoveAgent, isDeployed = false }: AgentDetailModalProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopyTemplate = () => {
@@ -162,21 +164,36 @@ ${agent.template || "System prompt goes here..."}`}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 p-6 border-t border-border">
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
-          <Button
-            onClick={() => onAddAgent(agent)}
-            disabled={!projectPath}
-          >
-            Add this agent
-          </Button>
-          {!projectPath && (
-            <p className="text-xs text-muted-foreground mr-auto">
-              Select a project first
-            </p>
-          )}
+        <div className="flex items-center justify-between gap-2 p-6 border-t border-border">
+          <div className="flex items-center gap-2">
+            {isDeployed && onRemoveAgent && (
+              <Button
+                variant="destructive"
+                onClick={() => onRemoveAgent(agent.id)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Remove Agent
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {!projectPath && (
+              <p className="text-xs text-muted-foreground">
+                Select a project first
+              </p>
+            )}
+            <Button variant="outline" onClick={onClose}>
+              Close
+            </Button>
+            {!isDeployed && (
+              <Button
+                onClick={() => onAddAgent(agent)}
+                disabled={!projectPath}
+              >
+                Add this agent
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

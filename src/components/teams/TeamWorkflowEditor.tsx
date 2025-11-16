@@ -12,6 +12,7 @@ import ReactFlow, {
   NodeTypes,
 } from "reactflow";
 import "reactflow/dist/style.css";
+import { shallow } from "zustand/shallow";
 import { AgentNode } from "./AgentNode";
 import { AgentSidebar } from "./AgentSidebar";
 import { TeamActionBar } from "./TeamActionBar";
@@ -33,9 +34,19 @@ interface TeamWorkflowEditorProps {
 }
 
 export function TeamWorkflowEditor({ onClose }: TeamWorkflowEditorProps) {
-  const { currentTeam, addAgentToWorkflow, removeAgentFromWorkflow, updateAgentPosition } = useTeamStore();
-  const { projectPath } = useProjectStore();
-  const { library } = useAgentStore();
+  // Subscribe to workflow array directly with shallow comparison
+  const workflow = useTeamStore(
+    (state) => state.currentTeam?.workflow || [],
+    shallow
+  );
+  const currentTeam = useTeamStore((state) => state.currentTeam);
+  const addAgentToWorkflow = useTeamStore((state) => state.addAgentToWorkflow);
+  const removeAgentFromWorkflow = useTeamStore((state) => state.removeAgentFromWorkflow);
+  const updateAgentPosition = useTeamStore((state) => state.updateAgentPosition);
+  const projectPath = useProjectStore((state) => state.projectPath);
+  const library = useAgentStore((state) => state.library);
+
+  console.log('[TeamWorkflowEditor] Render - currentTeam:', currentTeam?.id, 'workflow length:', workflow.length);
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -44,12 +55,27 @@ export function TeamWorkflowEditor({ onClose }: TeamWorkflowEditorProps) {
   const [teamName, setTeamName] = useState(currentTeam?.name || "");
   const [teamDescription, setTeamDescription] = useState(currentTeam?.description || "");
 
-  // Initialize nodes and edges from team
-  useEffect(() => {
-    if (!currentTeam) return;
+  const handleDeleteNode = useCallback((agentId: string) => {
+    removeAgentFromWorkflow(agentId);
+  }, [removeAgentFromWorkflow]);
 
-    const workflowNodes: Node[] = currentTeam.workflow.map((node) => {
+  // Initialize nodes and edges from team workflow
+  useEffect(() => {
+    console.log('[TeamWorkflowEditor] useEffect triggered! workflow length:', workflow.length);
+
+    if (!currentTeam) {
+      console.log('[TeamWorkflowEditor] No currentTeam, clearing nodes/edges');
+      setNodes([]);
+      setEdges([]);
+      return;
+    }
+
+    const workflowIds = workflow.map(n => n.agentId).join(',');
+    console.log('[TeamWorkflowEditor] Workflow IDs:', workflowIds);
+
+    const workflowNodes: Node[] = workflow.map((node) => {
       const agent = library.find((a) => a.id === node.agentId);
+      console.log('[TeamWorkflowEditor] Creating node for agent:', node.agentId, agent?.name);
       return {
         id: node.agentId,
         type: "agentNode",
@@ -63,7 +89,7 @@ export function TeamWorkflowEditor({ onClose }: TeamWorkflowEditorProps) {
     });
 
     const workflowEdges: Edge[] = [];
-    const sortedNodes = [...currentTeam.workflow].sort((a, b) => a.order - b.order);
+    const sortedNodes = [...workflow].sort((a, b) => a.order - b.order);
     for (let i = 0; i < sortedNodes.length - 1; i++) {
       workflowEdges.push({
         id: `${sortedNodes[i].agentId}-${sortedNodes[i + 1].agentId}`,
@@ -73,13 +99,11 @@ export function TeamWorkflowEditor({ onClose }: TeamWorkflowEditorProps) {
       });
     }
 
+    console.log('[TeamWorkflowEditor] Setting nodes:', workflowNodes.length, 'edges:', workflowEdges.length);
+    console.log('[TeamWorkflowEditor] Nodes:', workflowNodes);
     setNodes(workflowNodes);
     setEdges(workflowEdges);
-  }, [currentTeam, library]);
-
-  const handleDeleteNode = (agentId: string) => {
-    removeAgentFromWorkflow(agentId);
-  };
+  }, [workflow, library, handleDeleteNode, setNodes, setEdges, currentTeam]);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -94,9 +118,15 @@ export function TeamWorkflowEditor({ onClose }: TeamWorkflowEditorProps) {
   );
 
   const handleAddAgent = (agentId: string) => {
+    console.log('[TeamWorkflowEditor] handleAddAgent called:', agentId);
+    console.log('[TeamWorkflowEditor] Current nodes.length:', nodes.length);
+    console.log('[TeamWorkflowEditor] Current workflow length:', workflow.length);
+
     // Calculate position for new node
-    const x = 100 + nodes.length * 250;
+    const x = 100 + workflow.length * 250;
     const y = 100;
+    console.log('[TeamWorkflowEditor] Calculated position:', { x, y });
+
     addAgentToWorkflow(agentId, { x, y });
   };
 

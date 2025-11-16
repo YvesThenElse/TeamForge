@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings, GitBranch, RefreshCw, Download, Trash2, CheckCircle, AlertCircle, FolderGit, Cpu, Palette, Shield } from "lucide-react";
+import { Settings, GitBranch, RefreshCw, Download, Trash2, CheckCircle, AlertCircle, FolderGit, Cpu, Palette } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
