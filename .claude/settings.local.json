@@ -11,7 +11,12 @@
       "Bash(npm start)",
       "Bash(taskkill:*)",
       "Bash(netstat:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(for file in backend/*.md frontend/*.md languages/*.md)",
+      "Bash(do [ -f \"$file\" ])",
+      "Bash(echo:*)",
+      "Bash(done)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
