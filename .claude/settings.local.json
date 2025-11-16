@@ -10,7 +10,8 @@
       "Bash(npm run check:frontend:*)",
       "Bash(npm start)",
       "Bash(taskkill:*)",
-      "Bash(netstat:*)"
+      "Bash(netstat:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

@@ -10,6 +10,7 @@ import type {
 } from "@/types/agentFile";
 import type { ClaudeInfo, GlobalClaudeInfo } from "@/types/claudeInfo";
 import type { Skill, SkillFrontmatter } from "@/types/skill";
+import type { Team } from "@/types/team";
 
 // Access the Electron API exposed via preload script
 declare global {
@@ -87,6 +88,17 @@ declare global {
       deleteSkill: (projectPath: string, skillId: string) => Promise<{ success: boolean }>;
       skillDirExists: (projectPath: string) => Promise<boolean>;
       ensureSkillsDir: (projectPath: string) => Promise<string>;
+
+      // Team commands
+      listTeams: (projectPath: string) => Promise<Team[]>;
+      loadTeam: (projectPath: string, teamId: string) => Promise<Team>;
+      saveTeam: (projectPath: string, team: Team) => Promise<string>;
+      deleteTeam: (projectPath: string, teamId: string) => Promise<string>;
+      deployTeam: (
+        projectPath: string,
+        team: Team,
+        agentLibrary: Agent[]
+      ) => Promise<string>;
     };
   }
 }
@@ -350,4 +362,41 @@ export async function skillDirExists(projectPath: string): Promise<boolean> {
 
 export async function ensureSkillsDir(projectPath: string): Promise<string> {
   return window.electronAPI.ensureSkillsDir(projectPath);
+}
+
+// ============================================================================
+// Team Commands
+// ============================================================================
+
+export async function listTeams(projectPath: string): Promise<Team[]> {
+  return window.electronAPI.listTeams(projectPath);
+}
+
+export async function loadTeam(
+  projectPath: string,
+  teamId: string
+): Promise<Team> {
+  return window.electronAPI.loadTeam(projectPath, teamId);
+}
+
+export async function saveTeam(
+  projectPath: string,
+  team: Team
+): Promise<string> {
+  return window.electronAPI.saveTeam(projectPath, team);
+}
+
+export async function deleteTeam(
+  projectPath: string,
+  teamId: string
+): Promise<string> {
+  return window.electronAPI.deleteTeam(projectPath, teamId);
+}
+
+export async function deployTeam(
+  projectPath: string,
+  team: Team,
+  agentLibrary: Agent[]
+): Promise<string> {
+  return window.electronAPI.deployTeam(projectPath, team, agentLibrary);
 }

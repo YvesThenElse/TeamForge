@@ -69,7 +69,7 @@ export function ConfigureAgentTab() {
       const frontmatter = {
         name: agent.name,
         description: agent.description,
-        tools: agent.tools || "all",
+        tools: Array.isArray(agent.tools) ? agent.tools.join(", ") : (agent.tools || "all"),
         model: agent.model || "sonnet",
       };
 

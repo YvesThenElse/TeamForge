@@ -96,4 +96,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('skill:dirExists', { projectPath }),
   ensureSkillsDir: (projectPath) =>
     ipcRenderer.invoke('skill:ensureDir', { projectPath }),
+
+  // Team commands
+  listTeams: (projectPath) =>
+    ipcRenderer.invoke('team:list', { projectPath }),
+  loadTeam: (projectPath, teamId) =>
+    ipcRenderer.invoke('team:load', { projectPath, teamId }),
+  saveTeam: (projectPath, team) =>
+    ipcRenderer.invoke('team:save', { projectPath, team }),
+  deleteTeam: (projectPath, teamId) =>
+    ipcRenderer.invoke('team:delete', { projectPath, teamId }),
+  deployTeam: (projectPath, team, agentLibrary) =>
+    ipcRenderer.invoke('team:deploy', { projectPath, team, agentLibrary }),
 });
