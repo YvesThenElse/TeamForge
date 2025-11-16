@@ -1,12 +1,24 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import os from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load agent library from agents_template directory
+// Load agent library from Git repository or fallback to local agents_template
 let agentLibrary = null;
+
+// Get path to agent repository
+function getAgentRepoPath() {
+  const homeDir = os.homedir();
+  return path.join(homeDir, '.teamforge', 'agent-templates');
+}
+
+// Fallback to local agents_template if Git repo doesn't exist
+function getFallbackAgentPath() {
+  return path.join(__dirname, 'agents_template');
+}
 
 function parseFrontmatter(content) {
   const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/;
@@ -56,8 +68,8 @@ async function scanAgentDirectory(dir, category = null) {
       const subCategory = category || entry.name;
       const subAgents = await scanAgentDirectory(fullPath, subCategory);
       agents.push(...subAgents);
-    } else if (entry.isFile() && entry.name.endsWith('.md')) {
-      // Parse agent file
+    } else if (entry.isFile() && entry.name.endsWith('.md') && entry.name.toLowerCase() !== 'readme.md') {
+      // Skip README.md files, parse agent files only
       const content = await fs.readFile(fullPath, 'utf-8');
       const { frontmatter, template } = parseFrontmatter(content);
 
@@ -83,9 +95,25 @@ async function scanAgentDirectory(dir, category = null) {
   return agents;
 }
 
-async function loadAgentLibrary() {
-  if (!agentLibrary) {
-    const templatesDir = path.join(__dirname, 'agents_template');
+async function loadAgentLibrary(forceReload = false) {
+  if (!agentLibrary || forceReload) {
+    // Try to load from Git repository first
+    const gitRepoPath = getAgentRepoPath();
+    const fallbackPath = getFallbackAgentPath();
+
+    let templatesDir = fallbackPath;
+    let source = 'local';
+
+    try {
+      // Check if Git repo exists
+      await fs.access(gitRepoPath);
+      templatesDir = gitRepoPath;
+      source = 'git';
+      console.log('[AgentHandlers] Loading agents from Git repository:', gitRepoPath);
+    } catch {
+      console.log('[AgentHandlers] Git repository not found, using local fallback:', fallbackPath);
+    }
+
     const agents = await scanAgentDirectory(templatesDir);
 
     // Extract unique categories
@@ -96,7 +124,11 @@ async function loadAgentLibrary() {
       version: '2.0.0',
       agents,
       categories,
+      source, // 'git' or 'local'
+      loadedFrom: templatesDir,
     };
+
+    console.log(`[AgentHandlers] Loaded ${agents.length} agents from ${source} (${templatesDir})`);
   }
 
   return agentLibrary;
@@ -110,6 +142,8 @@ export function registerAgentHandlers(ipcMain) {
       version: library.version,
       agents: library.agents,
       categories: library.categories,
+      source: library.source,
+      loadedFrom: library.loadedFrom,
     };
   });
 
@@ -199,5 +233,17 @@ model: ${agent.model}
         )
       )
     );
+  });
+
+  // Reload agent library (hot reload)
+  ipcMain.handle('agent:reload', async () => {
+    console.log('[AgentHandlers] Reloading agent library...');
+    const library = await loadAgentLibrary(true); // Force reload
+    return {
+      success: true,
+      agentCount: library.agents.length,
+      source: library.source,
+      loadedFrom: library.loadedFrom,
+    };
   });
 }

@@ -109,4 +109,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('team:delete', { projectPath, teamId }),
   deployTeam: (projectPath, team, agentLibrary) =>
     ipcRenderer.invoke('team:deploy', { projectPath, team, agentLibrary }),
+
+  // Agent Repository commands
+  syncAgentRepository: (repoUrl, branch) =>
+    ipcRenderer.invoke('agentRepo:sync', { repoUrl, branch }),
+  getAgentRepositoryPath: () =>
+    ipcRenderer.invoke('agentRepo:getPath'),
+  getAgentRepositoryStatus: () =>
+    ipcRenderer.invoke('agentRepo:status'),
+  deleteAgentRepository: () =>
+    ipcRenderer.invoke('agentRepo:delete'),
+  reloadAgents: () =>
+    ipcRenderer.invoke('agent:reload'),
 });

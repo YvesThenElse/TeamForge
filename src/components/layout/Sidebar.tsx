@@ -1,9 +1,9 @@
-import { FolderOpen, Bot, Settings, Users, Sparkles } from "lucide-react";
+import { FolderOpen, Bot, Settings, Users, Sparkles, Sliders, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
-  currentStep: "project" | "agents" | "configure-agents" | "configure-teams" | "skills";
-  onStepChange: (step: "project" | "agents" | "configure-agents" | "configure-teams" | "skills") => void;
+  currentStep: "project" | "agents" | "configure-agents" | "configure-teams" | "skills" | "settings" | "help";
+  onStepChange: (step: "project" | "agents" | "configure-agents" | "configure-teams" | "skills" | "settings" | "help") => void;
   hasProjectSelected?: boolean;
 }
 
@@ -24,7 +24,7 @@ export function Sidebar({ currentStep, onStepChange, hasProjectSelected = false 
     {
       id: "configure-agents" as const,
       label: "Configure Agent",
-      icon: Settings,
+      icon: Sliders,
       description: "Agent library",
     },
     {
@@ -38,6 +38,18 @@ export function Sidebar({ currentStep, onStepChange, hasProjectSelected = false 
       label: "Skills",
       icon: Sparkles,
       description: "Manage skills",
+    },
+    {
+      id: "settings" as const,
+      label: "Configuration",
+      icon: Settings,
+      description: "App settings",
+    },
+    {
+      id: "help" as const,
+      label: "Help",
+      icon: HelpCircle,
+      description: "Guide & info",
     },
   ];
 

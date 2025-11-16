@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, FolderPlus, Loader2 } from "lucide-react";
+import { FolderPlus, Loader2, RefreshCw, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -11,51 +11,74 @@ import { AgentDetailModal } from "./AgentDetailModal";
 import type { Agent } from "@/types";
 
 export function ConfigureAgentTab() {
-  const { library, categories, setLibrary, setCategories } = useAgentStore();
+  const { library, categories, setLibrary, setCategories, isLoading, setIsLoading } = useAgentStore();
   const { projectPath } = useProjectStore();
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [isAddingCategory, setIsAddingCategory] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [agentSource, setAgentSource] = useState<string>("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // Load template agents on mount
+  // Load agent library
+  const loadAgentLibrary = async () => {
+    setIsLoading(true);
+    try {
+      console.log("[ConfigureAgentTab] Loading agent library...");
+      const libraryData = await electron.getAgentLibrary();
+      console.log("[ConfigureAgentTab] Loaded library:", libraryData);
+      setLibrary(libraryData.agents);
+      setAgentSource(libraryData.source || "unknown");
+
+      // Extract unique categories from agents
+      const uniqueCategories = Array.from(
+        new Set(libraryData.agents.map((a) => a.category).filter(Boolean))
+      ).sort();
+      console.log("[ConfigureAgentTab] Categories:", uniqueCategories);
+      setCategories(uniqueCategories as any);
+    } catch (err) {
+      console.error("[ConfigureAgentTab] Failed to load agent library:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load on mount
   useEffect(() => {
-    const loadTemplates = async () => {
-      setLoading(true);
-      try {
-        console.log("[ConfigureAgentTab] Loading template agents...");
-        const templates = await electron.loadTemplateAgents();
-        console.log("[ConfigureAgentTab] Loaded templates:", templates);
-        setLibrary(templates);
+    loadAgentLibrary();
+  }, []);
 
-        // Extract unique categories
-        const uniqueCategories = Array.from(
-          new Set(templates.map((a) => a.category))
-        ).sort();
-        setCategories(uniqueCategories as any);
-      } catch (err) {
-        console.error("[ConfigureAgentTab] Failed to load templates:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Handle refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await electron.reloadAgents();
+      await loadAgentLibrary();
+    } catch (err) {
+      console.error("[ConfigureAgentTab] Failed to refresh agents:", err);
+      alert(`Failed to refresh agents: ${err}`);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
-    loadTemplates();
-  }, [setLibrary, setCategories]);
+  // Filter by category first
+  let filteredAgents = selectedCategory === "all"
+    ? library
+    : library.filter((a) => a.category === selectedCategory);
 
-  const filteredAgents =
-    selectedCategory === "all"
-      ? library
-      : library.filter((a) => a.category === selectedCategory);
+  // Then filter by search query (only if 3+ characters)
+  if (searchQuery.trim().length >= 3) {
+    const query = searchQuery.toLowerCase();
+    filteredAgents = filteredAgents.filter((agent) =>
+      agent.name.toLowerCase().includes(query) ||
+      agent.description.toLowerCase().includes(query) ||
+      agent.tags?.some((tag) => tag.toLowerCase().includes(query)) ||
+      agent.category.toLowerCase().includes(query)
+    );
+  }
 
-  const handleAddCategory = () => {
-    if (!newCategoryName.trim()) return;
-
-    const newCategories = [...categories, newCategoryName.trim()];
-    setCategories(newCategories as any);
-    setNewCategoryName("");
-    setIsAddingCategory(false);
+  const handleClearSearch = () => {
+    setSearchQuery("");
   };
 
   const handleAddAgent = async (agent: Agent) => {
@@ -91,12 +114,12 @@ export function ConfigureAgentTab() {
     }
   };
 
-  if (loading) {
+  if (isLoading && library.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading agent templates...</p>
+          <p className="text-muted-foreground">Loading agent library...</p>
         </div>
       </div>
     );
@@ -106,86 +129,120 @@ export function ConfigureAgentTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Predefined Agents Library</h2>
+          <h2 className="text-2xl font-bold">Agent Library</h2>
           <p className="text-muted-foreground mt-1">
-            {library.length} agent{library.length !== 1 ? 's' : ''} loaded from templates
+            {library.length} agent{library.length !== 1 ? 's' : ''} loaded
+            {agentSource && (
+              <span className="ml-1">
+                from <span className="font-medium">{agentSource === 'git' ? 'Git repository' : 'local templates'}</span>
+              </span>
+            )}
           </p>
         </div>
+        <Button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          variant="outline"
+          size="sm"
+        >
+          {isRefreshing ? (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              Refreshing...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
+            </>
+          )}
+        </Button>
       </div>
 
-      {/* Categories */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Categories</CardTitle>
-              <CardDescription>
-                Organize agents by category
-              </CardDescription>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsAddingCategory(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Category
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isAddingCategory && (
-            <div className="flex space-x-2 mb-4">
-              <Input
-                type="text"
-                placeholder="Category name (e.g., development)"
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAddCategory()}
-              />
-              <Button onClick={handleAddCategory}>Add</Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsAddingCategory(false);
-                  setNewCategoryName("");
-                }}
+      {/* Categories and Search on same row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Categories - Left */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Categories</CardTitle>
+            <CardDescription>
+              Filter agents by category
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setSelectedCategory("all")}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                  selectedCategory === "all"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted hover:bg-muted/80"
+                }`}
               >
-                Cancel
+                All ({library.length})
+              </button>
+              {categories.map((cat) => {
+                const count = library.filter((a) => a.category === cat).length;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                      selectedCategory === cat
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted hover:bg-muted/80"
+                    }`}
+                  >
+                    {cat} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Search - Right */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Search Agents</CardTitle>
+            <CardDescription>
+              Search by name, description, tags, or category (minimum 3 characters)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search agents..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Button
+                onClick={handleClearSearch}
+                variant="outline"
+                size="icon"
+                disabled={!searchQuery}
+              >
+                <X className="h-4 w-4" />
               </Button>
             </div>
-          )}
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setSelectedCategory("all")}
-              className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                selectedCategory === "all"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted hover:bg-muted/80"
-              }`}
-            >
-              All ({library.length})
-            </button>
-            {categories.map((cat) => {
-              const count = library.filter((a) => a.category === cat).length;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                    selectedCategory === cat
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted hover:bg-muted/80"
-                  }`}
-                >
-                  {cat} ({count})
-                </button>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+            {searchQuery.trim().length > 0 && searchQuery.trim().length < 3 && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Type at least 3 characters to search
+              </p>
+            )}
+            {searchQuery.trim().length >= 3 && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Found {filteredAgents.length} agent{filteredAgents.length !== 1 ? 's' : ''}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Agents Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

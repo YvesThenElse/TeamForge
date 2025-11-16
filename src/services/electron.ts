@@ -100,6 +100,33 @@ declare global {
         team: Team,
         agentLibrary: Agent[]
       ) => Promise<string>;
+
+      // Agent Repository commands
+      syncAgentRepository: (repoUrl: string, branch: string) => Promise<{
+        success: boolean;
+        path: string;
+        message: string;
+        timestamp: string;
+      }>;
+      getAgentRepositoryPath: () => Promise<string>;
+      getAgentRepositoryStatus: () => Promise<{
+        exists: boolean;
+        isRepo?: boolean;
+        path: string;
+        branch?: string;
+        ahead?: number;
+        behind?: number;
+        remotes?: Array<{ name: string; url: string }>;
+        message?: string;
+        error?: string;
+      }>;
+      deleteAgentRepository: () => Promise<{ success: boolean; message: string }>;
+      reloadAgents: () => Promise<{
+        success: boolean;
+        agentCount: number;
+        source: string;
+        loadedFrom: string;
+      }>;
     };
   }
 }
@@ -178,6 +205,8 @@ export interface AgentLibraryResponse {
   version: string;
   agents: Agent[];
   categories: string[];
+  source?: string; // 'git' or 'local'
+  loadedFrom?: string; // Path to loaded directory
 }
 
 export async function getAgentLibrary(): Promise<AgentLibraryResponse> {
@@ -404,4 +433,28 @@ export async function deployTeam(
   agentLibrary: Agent[]
 ): Promise<string> {
   return window.electronAPI.deployTeam(projectPath, team, agentLibrary);
+}
+
+// ============================================================================
+// Agent Repository Commands
+// ============================================================================
+
+export async function syncAgentRepository(repoUrl: string, branch: string = 'main') {
+  return window.electronAPI.syncAgentRepository(repoUrl, branch);
+}
+
+export async function getAgentRepositoryPath(): Promise<string> {
+  return window.electronAPI.getAgentRepositoryPath();
+}
+
+export async function getAgentRepositoryStatus() {
+  return window.electronAPI.getAgentRepositoryStatus();
+}
+
+export async function deleteAgentRepository() {
+  return window.electronAPI.deleteAgentRepository();
+}
+
+export async function reloadAgents() {
+  return window.electronAPI.reloadAgents();
 }
