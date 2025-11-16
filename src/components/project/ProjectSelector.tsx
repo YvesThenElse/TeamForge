@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FolderOpen, GitBranch, Loader2, Clock, X, CheckCircle, XCircle, Info } from "lucide-react";
+import { FolderOpen, GitBranch, Loader2, Clock, X, CheckCircle, XCircle, Info, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -54,6 +54,16 @@ export function ProjectSelector() {
     } catch (err) {
       console.error("[ProjectSelector] Error:", err);
       alert(`Error selecting folder: ${err}`);
+    }
+  };
+
+  const handleOpenFolder = async () => {
+    if (!projectPath) return;
+    try {
+      await electron.openFolder(projectPath);
+    } catch (err) {
+      console.error("[ProjectSelector] Error opening folder:", err);
+      alert(`Failed to open folder: ${err}`);
     }
   };
 
@@ -161,9 +171,6 @@ export function ProjectSelector() {
                   </div>
                   {analysis && (
                     <div className="p-3 bg-muted rounded-md text-sm space-y-2">
-                      <div>
-                        <span className="font-medium">Type:</span> {analysis.projectType}
-                      </div>
                       {analysis.frameworks && analysis.frameworks.length > 0 && (
                         <div>
                           <span className="font-medium">Frameworks:</span>{" "}
@@ -188,23 +195,36 @@ export function ProjectSelector() {
                   )}
                 </div>
               )}
-              <Button
-                onClick={handleSelectFolder}
-                disabled={isAnalyzing}
-                className="w-full"
-              >
-                {isAnalyzing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <FolderOpen className="mr-2 h-4 w-4" />
-                    Browse Folder
-                  </>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleSelectFolder}
+                  disabled={isAnalyzing}
+                  className="flex-1"
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <FolderOpen className="mr-2 h-4 w-4" />
+                      Browse Folder
+                    </>
+                  )}
+                </Button>
+                {projectPath && (
+                  <Button
+                    onClick={handleOpenFolder}
+                    disabled={isAnalyzing}
+                    variant="outline"
+                    className="shrink-0"
+                  >
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Open Folder
+                  </Button>
                 )}
-              </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

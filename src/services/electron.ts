@@ -18,6 +18,7 @@ declare global {
     electronAPI: {
       // Dialog
       selectFolder: () => Promise<string | null>;
+      openFolder: (folderPath: string) => Promise<string>;
 
       // Git commands
       cloneRepo: (url: string, path: string) => Promise<string>;
@@ -129,6 +130,10 @@ export async function selectFolder(): Promise<string | null> {
     console.error("[electron.ts] Error:", err);
     throw err;
   }
+}
+
+export async function openFolder(folderPath: string): Promise<string> {
+  return window.electronAPI.openFolder(folderPath);
 }
 
 // ============================================================================

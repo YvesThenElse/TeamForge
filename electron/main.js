@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
@@ -61,6 +61,22 @@ app.whenReady().then(() => {
       return result.canceled ? null : result.filePaths[0];
     } catch (err) {
       console.error('[Electron] Error showing dialog:', err);
+      throw err;
+    }
+  });
+
+  // Open folder in file explorer
+  ipcMain.handle('folder:open', async (event, { folderPath }) => {
+    console.log('[Electron] folder:open called with path:', folderPath);
+    try {
+      const result = await shell.openPath(folderPath);
+      if (result) {
+        // If result is a non-empty string, it's an error message
+        throw new Error(result);
+      }
+      return 'Folder opened successfully';
+    } catch (err) {
+      console.error('[Electron] Error opening folder:', err);
       throw err;
     }
   });

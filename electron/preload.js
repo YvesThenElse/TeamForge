@@ -5,6 +5,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   // Dialog
   selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
+  openFolder: (folderPath) => ipcRenderer.invoke('folder:open', { folderPath }),
 
   // Git commands
   cloneRepo: (url, path) => ipcRenderer.invoke('git:clone', { url, path }),
