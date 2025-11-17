@@ -137,4 +137,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('hook:dirExists', { projectPath }),
   ensureHooksDir: (projectPath) =>
     ipcRenderer.invoke('hook:ensureDir', { projectPath }),
+
+  // Claude Settings commands
+  loadClaudeSettings: (projectPath) =>
+    ipcRenderer.invoke('claudeSettings:load', { projectPath }),
+  saveClaudeSettings: (projectPath, settings) =>
+    ipcRenderer.invoke('claudeSettings:save', { projectPath, settings }),
+  loadUserClaudeSettings: () =>
+    ipcRenderer.invoke('claudeSettings:loadUser'),
+  loadAllClaudeSettings: (projectPath) =>
+    ipcRenderer.invoke('claudeSettings:loadAll', { projectPath }),
+  claudeSettingsExists: (projectPath) =>
+    ipcRenderer.invoke('claudeSettings:exists', { projectPath }),
+  ensureClaudeSettingsDir: (projectPath) =>
+    ipcRenderer.invoke('claudeSettings:ensureDir', { projectPath }),
+  validateClaudeSettings: (settings) =>
+    ipcRenderer.invoke('claudeSettings:validate', { settings }),
 });

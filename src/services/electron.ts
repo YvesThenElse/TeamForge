@@ -12,6 +12,7 @@ import type { ClaudeInfo, GlobalClaudeInfo } from "@/types/claudeInfo";
 import type { Skill, SkillFrontmatter } from "@/types/skill";
 import type { Team } from "@/types/team";
 import type { Hook } from "@/types/hook";
+import type { ClaudeSettings, SettingsFile } from "@/types/claudeSettings";
 
 // Access the Electron API exposed via preload script
 declare global {
@@ -147,6 +148,36 @@ declare global {
       ) => Promise<string>;
       hookDirExists: (projectPath: string) => Promise<boolean>;
       ensureHooksDir: (projectPath: string) => Promise<string>;
+
+      // Claude Settings commands
+      loadClaudeSettings: (projectPath: string) => Promise<{
+        exists: boolean;
+        path: string;
+        settings: ClaudeSettings;
+      }>;
+      saveClaudeSettings: (
+        projectPath: string,
+        settings: ClaudeSettings
+      ) => Promise<{
+        success: boolean;
+        path: string;
+        message: string;
+      }>;
+      loadUserClaudeSettings: () => Promise<{
+        exists: boolean;
+        path: string;
+        settings: ClaudeSettings;
+      }>;
+      loadAllClaudeSettings: (projectPath: string) => Promise<{
+        files: SettingsFile[];
+        merged: ClaudeSettings;
+      }>;
+      claudeSettingsExists: (projectPath: string) => Promise<boolean>;
+      ensureClaudeSettingsDir: (projectPath: string) => Promise<string>;
+      validateClaudeSettings: (settings: ClaudeSettings) => Promise<{
+        valid: boolean;
+        errors: string[];
+      }>;
     };
   }
 }
@@ -522,4 +553,57 @@ export async function hookDirExists(projectPath: string): Promise<boolean> {
 
 export async function ensureHooksDir(projectPath: string): Promise<string> {
   return window.electronAPI.ensureHooksDir(projectPath);
+}
+
+// ============================================================================
+// Claude Settings Commands
+// ============================================================================
+
+export async function loadClaudeSettings(projectPath: string): Promise<{
+  exists: boolean;
+  path: string;
+  settings: ClaudeSettings;
+}> {
+  return window.electronAPI.loadClaudeSettings(projectPath);
+}
+
+export async function saveClaudeSettings(
+  projectPath: string,
+  settings: ClaudeSettings
+): Promise<{
+  success: boolean;
+  path: string;
+  message: string;
+}> {
+  return window.electronAPI.saveClaudeSettings(projectPath, settings);
+}
+
+export async function loadUserClaudeSettings(): Promise<{
+  exists: boolean;
+  path: string;
+  settings: ClaudeSettings;
+}> {
+  return window.electronAPI.loadUserClaudeSettings();
+}
+
+export async function loadAllClaudeSettings(projectPath: string): Promise<{
+  files: SettingsFile[];
+  merged: ClaudeSettings;
+}> {
+  return window.electronAPI.loadAllClaudeSettings(projectPath);
+}
+
+export async function claudeSettingsExists(projectPath: string): Promise<boolean> {
+  return window.electronAPI.claudeSettingsExists(projectPath);
+}
+
+export async function ensureClaudeSettingsDir(projectPath: string): Promise<string> {
+  return window.electronAPI.ensureClaudeSettingsDir(projectPath);
+}
+
+export async function validateClaudeSettings(settings: ClaudeSettings): Promise<{
+  valid: boolean;
+  errors: string[];
+}> {
+  return window.electronAPI.validateClaudeSettings(settings);
 }

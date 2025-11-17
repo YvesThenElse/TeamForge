@@ -1,9 +1,9 @@
-import { FolderOpen, Settings, Users, Sparkles, Sliders, HelpCircle, Shield, FileCheck, Zap } from "lucide-react";
+import { FolderOpen, Users, Sparkles, Sliders, HelpCircle, Shield, FileCheck, Zap, Settings2, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
-  currentStep: "project" | "agents" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "security" | "settings" | "help";
-  onStepChange: (step: "project" | "agents" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "security" | "settings" | "help") => void;
+  currentStep: "project" | "agents" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "agent-tools" | "claude-settings" | "settings" | "help";
+  onStepChange: (step: "project" | "agents" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "agent-tools" | "claude-settings" | "settings" | "help") => void;
   hasProjectSelected?: boolean;
 }
 
@@ -46,16 +46,22 @@ export function Sidebar({ currentStep, onStepChange, hasProjectSelected = false 
       description: "Lifecycle hooks",
     },
     {
-      id: "security" as const,
-      label: "Security",
+      id: "agent-tools" as const,
+      label: "Agent Tools",
       icon: Shield,
       description: "Agent permissions",
     },
     {
+      id: "claude-settings" as const,
+      label: "Claude Settings",
+      icon: Settings2,
+      description: "Claude Code config",
+    },
+    {
       id: "settings" as const,
-      label: "Configuration",
-      icon: Settings,
-      description: "App settings",
+      label: "App Settings",
+      icon: Wrench,
+      description: "TeamForge config",
     },
     {
       id: "help" as const,
