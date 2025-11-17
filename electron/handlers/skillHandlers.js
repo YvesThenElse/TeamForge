@@ -1,6 +1,10 @@
 import fs from 'fs/promises';
 import path from 'path';
 import yaml from 'js-yaml';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Parse skill SKILL.md file with YAML frontmatter
@@ -192,6 +196,64 @@ export function registerSkillHandlers(ipcMain) {
       return '.claude/skills/ directory created';
     } catch (error) {
       throw new Error(`Failed to create .claude/skills/ directory: ${error.message}`);
+    }
+  });
+
+  // Load template skills from skills_template directory
+  ipcMain.handle('skill:loadTemplates', async () => {
+    try {
+      // Go up from handlers directory to project root
+      const projectRoot = path.join(__dirname, '..', '..');
+      const templatesDir = path.join(projectRoot, 'skills_template');
+
+      console.log('[skill:loadTemplates] Loading from:', templatesDir);
+
+      // Check if directory exists
+      try {
+        await fs.access(templatesDir);
+      } catch {
+        console.log('[skill:loadTemplates] Directory not found');
+        return [];
+      }
+
+      const entries = await fs.readdir(templatesDir, { withFileTypes: true });
+      const skillDirs = entries.filter((entry) => entry.isDirectory());
+
+      console.log('[skill:loadTemplates] Found skill directories:', skillDirs.map(d => d.name));
+
+      const templates = await Promise.all(
+        skillDirs.map(async (dir) => {
+          const skillPath = path.join(templatesDir, dir.name);
+          const skillFilePath = path.join(skillPath, 'SKILL.md');
+
+          try {
+            const content = await fs.readFile(skillFilePath, 'utf-8');
+            const { frontmatter, instructions } = parseSkillFile(content);
+
+            return {
+              id: dir.name,
+              name: frontmatter.name || dir.name,
+              description: frontmatter.description || '',
+              allowedTools: frontmatter['allowed-tools'] || null,
+              category: frontmatter.category || 'General',
+              tags: frontmatter.tags || [],
+              instructions,
+              frontmatter,
+              skillPath,
+            };
+          } catch (err) {
+            console.error(`[skill:loadTemplates] Failed to read skill ${dir.name}:`, err);
+            return null;
+          }
+        })
+      );
+
+      const validTemplates = templates.filter(t => t !== null);
+      console.log('[skill:loadTemplates] Loaded templates:', validTemplates.length);
+      return validTemplates;
+    } catch (err) {
+      console.error('[skill:loadTemplates] Failed to load templates:', err);
+      return [];
     }
   });
 }

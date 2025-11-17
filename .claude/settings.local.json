@@ -16,7 +16,9 @@
       "Bash(do [ -f \"$file\" ])",
       "Bash(echo:*)",
       "Bash(done)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(for dir in */)",
+      "Bash(do mv \"$dir/instructions.md\" \"$dir/SKILL.md\")"
     ],
     "deny": [],
     "ask": []

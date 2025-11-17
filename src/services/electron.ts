@@ -89,6 +89,7 @@ declare global {
       deleteSkill: (projectPath: string, skillId: string) => Promise<{ success: boolean }>;
       skillDirExists: (projectPath: string) => Promise<boolean>;
       ensureSkillsDir: (projectPath: string) => Promise<string>;
+      loadTemplateSkills: () => Promise<Skill[]>;
 
       // Team commands
       listTeams: (projectPath: string) => Promise<Team[]>;
@@ -396,6 +397,10 @@ export async function skillDirExists(projectPath: string): Promise<boolean> {
 
 export async function ensureSkillsDir(projectPath: string): Promise<string> {
   return window.electronAPI.ensureSkillsDir(projectPath);
+}
+
+export async function loadTemplateSkills(): Promise<Skill[]> {
+  return window.electronAPI.loadTemplateSkills();
 }
 
 // ============================================================================

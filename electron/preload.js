@@ -97,6 +97,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('skill:dirExists', { projectPath }),
   ensureSkillsDir: (projectPath) =>
     ipcRenderer.invoke('skill:ensureDir', { projectPath }),
+  loadTemplateSkills: () =>
+    ipcRenderer.invoke('skill:loadTemplates'),
 
   // Team commands
   listTeams: (projectPath) =>

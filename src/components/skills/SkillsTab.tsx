@@ -1,96 +1,122 @@
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Edit, Loader2, Sparkles, Save, X } from "lucide-react";
+import { Loader2, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
 import { useProjectStore } from "@/stores/projectStore";
-import type { Skill, SkillFrontmatter } from "@/types/skill";
+import type { Skill } from "@/types/skill";
 import * as electron from "@/services/electron";
+import { SkillDetailModal } from "./SkillDetailModal";
 
 export function SkillsTab() {
   const { projectPath } = useProjectStore();
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
+  const [library, setLibrary] = useState<Skill[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
+  // Load template skills on mount
   useEffect(() => {
-    if (projectPath) {
-      loadSkills();
-    }
-  }, [projectPath]);
+    const loadTemplates = async () => {
+      setLoading(true);
+      try {
+        console.log("[SkillsTab] Loading template skills...");
+        const templates = await electron.loadTemplateSkills();
+        console.log("[SkillsTab] Loaded templates:", templates);
+        setLibrary(templates);
 
-  const loadSkills = async () => {
-    if (!projectPath) return;
+        // Extract unique categories
+        const uniqueCategories = Array.from(
+          new Set(templates.map((s) => s.category).filter(Boolean))
+        ).sort() as string[];
+        setCategories(uniqueCategories);
+      } catch (err) {
+        console.error("[SkillsTab] Failed to load templates:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    setIsLoading(true);
-    try {
-      const loadedSkills = await electron.listSkills(projectPath);
-      setSkills(loadedSkills);
-    } catch (error) {
-      console.error("Failed to load skills:", error);
-      alert("Failed to load skills");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    loadTemplates();
+  }, []);
 
-  const handleCreateSkill = () => {
-    setIsCreating(true);
-    setEditingSkill(null);
-  };
+  // Filter by category first
+  let filteredSkills = selectedCategory === "all"
+    ? library
+    : library.filter((s) => s.category === selectedCategory);
 
-  const handleEditSkill = (skill: Skill) => {
-    setEditingSkill(skill);
-    setIsCreating(false);
-  };
-
-  const handleDeleteSkill = async (skillId: string) => {
-    if (!projectPath) return;
-    if (!confirm(`Are you sure you want to delete the skill "${skillId}"?`)) return;
-
-    try {
-      await electron.deleteSkill(projectPath, skillId);
-      await loadSkills();
-    } catch (error) {
-      console.error("Failed to delete skill:", error);
-      alert("Failed to delete skill");
-    }
-  };
-
-  const handleSaveComplete = () => {
-    setIsCreating(false);
-    setEditingSkill(null);
-    loadSkills();
-  };
-
-  const handleCancel = () => {
-    setIsCreating(false);
-    setEditingSkill(null);
-  };
-
-  if (!projectPath) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <Sparkles className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No Project Selected</h3>
-          <p className="text-muted-foreground">
-            Please select a project first to manage skills
-          </p>
-        </div>
-      </div>
+  // Then filter by search query (only if 3+ characters)
+  if (searchQuery.trim().length >= 3) {
+    const query = searchQuery.toLowerCase();
+    filteredSkills = filteredSkills.filter((skill) =>
+      skill.name.toLowerCase().includes(query) ||
+      skill.description.toLowerCase().includes(query) ||
+      skill.tags?.some((tag) => tag.toLowerCase().includes(query)) ||
+      (skill.category && skill.category.toLowerCase().includes(query))
     );
   }
 
-  if (isCreating || editingSkill) {
+  const handleClearSearch = () => {
+    setSearchQuery("");
+  };
+
+  const handleAddSkill = async (skill: Skill) => {
+    if (!projectPath) {
+      alert("Please select a project first");
+      return;
+    }
+
+    try {
+      // Create frontmatter for the skill file
+      const frontmatter: any = {
+        name: skill.name,
+        description: skill.description,
+      };
+
+      if (skill.allowedTools) {
+        frontmatter["allowed-tools"] = skill.allowedTools;
+      }
+
+      if (skill.category) {
+        frontmatter.category = skill.category;
+      }
+
+      if (skill.tags && skill.tags.length > 0) {
+        frontmatter.tags = skill.tags;
+      }
+
+      // Ensure .claude/skills/ directory exists
+      await electron.ensureSkillsDir(projectPath);
+
+      // Save skill file to project's .claude/skills/ directory
+      const result = await electron.saveSkill(
+        projectPath,
+        skill.id,
+        frontmatter,
+        skill.instructions || ""
+      );
+
+      if (result.success) {
+        alert(`Skill "${skill.name}" added successfully to ${result.skillPath}`);
+        setSelectedSkill(null);
+      }
+    } catch (err) {
+      console.error("Failed to add skill:", err);
+      alert(`Failed to add skill: ${err}`);
+    }
+  };
+
+  if (loading) {
     return (
-      <SkillEditor
-        skill={editingSkill}
-        projectPath={projectPath}
-        onSave={handleSaveComplete}
-        onCancel={handleCancel}
-      />
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading skill library...</p>
+        </div>
+      </div>
     );
   }
 
@@ -98,304 +124,167 @@ export function SkillsTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Project Skills</h2>
+          <h2 className="text-2xl font-bold">Skill Library</h2>
           <p className="text-muted-foreground mt-1">
-            Manage skills in .claude/skills/ directory
+            {library.length} skill{library.length !== 1 ? 's' : ''} loaded from templates
           </p>
         </div>
-        <Button onClick={handleCreateSkill}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Skill
-        </Button>
       </div>
 
-      {isLoading ? (
+      {/* Categories and Search on same row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Categories - Left */}
         <Card>
-          <CardContent className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </CardContent>
-        </Card>
-      ) : skills.length === 0 ? (
-        <Card>
-          <CardContent className="flex items-center justify-center py-12">
-            <div className="text-center max-w-md">
-              <Sparkles className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Skills Created</h3>
-              <p className="text-muted-foreground mb-4">
-                Skills package expertise into discoverable capabilities. Each skill consists
-                of instructions and optional supporting files.
-              </p>
-              <Button onClick={handleCreateSkill}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create First Skill
-              </Button>
+          <CardHeader>
+            <CardTitle>Categories</CardTitle>
+            <CardDescription>
+              Filter skills by category
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setSelectedCategory("all")}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                  selectedCategory === "all"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted hover:bg-muted/80"
+                }`}
+              >
+                All ({library.length})
+              </button>
+              {categories.map((cat) => {
+                const count = library.filter((s) => s.category === cat).length;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                      selectedCategory === cat
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted hover:bg-muted/80"
+                    }`}
+                  >
+                    {cat} ({count})
+                  </button>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {skills.map((skill) => (
-            <Card key={skill.id} className={skill.error ? "border-red-500" : ""}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="truncate">{skill.name}</CardTitle>
-                    <CardDescription className="text-xs font-mono mt-1 truncate">
-                      {skill.id}
-                    </CardDescription>
-                  </div>
-                  <div className="flex space-x-1 ml-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEditSkill(skill)}
-                      disabled={skill.error}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteSkill(skill.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
-                  {skill.description || "No description"}
-                </p>
-                {skill.allowedTools && (
-                  <div className="text-xs">
-                    <span className="font-medium">Allowed tools:</span>
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {skill.allowedTools.split(",").map((tool, idx) => (
-                        <span
-                          key={idx}
-                          className="px-2 py-0.5 bg-muted rounded text-xs"
-                        >
-                          {tool.trim()}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {skill.error && (
-                  <div className="text-xs text-red-500 mt-2">
-                    Error loading SKILL.md file
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
-interface SkillEditorProps {
-  skill: Skill | null; // null for new skill
-  projectPath: string;
-  onSave: () => void;
-  onCancel: () => void;
-}
-
-function SkillEditor({ skill, projectPath, onSave, onCancel }: SkillEditorProps) {
-  const [skillId, setSkillId] = useState(skill?.id || "");
-  const [name, setName] = useState(skill?.name || "");
-  const [description, setDescription] = useState(skill?.description || "");
-  const [allowedTools, setAllowedTools] = useState(skill?.allowedTools || "");
-  const [instructions, setInstructions] = useState(skill?.instructions || "");
-  const [isSaving, setIsSaving] = useState(false);
-
-  const handleSave = async () => {
-    // Validation
-    if (!skillId.trim()) {
-      alert("Skill ID is required");
-      return;
-    }
-
-    if (!/^[a-z0-9-]+$/.test(skillId)) {
-      alert("Skill ID must contain only lowercase letters, numbers, and hyphens");
-      return;
-    }
-
-    if (skillId.length > 64) {
-      alert("Skill ID must be 64 characters or less");
-      return;
-    }
-
-    if (!name.trim()) {
-      alert("Name is required");
-      return;
-    }
-
-    if (!description.trim()) {
-      alert("Description is required");
-      return;
-    }
-
-    if (description.length > 1024) {
-      alert("Description must be 1024 characters or less");
-      return;
-    }
-
-    if (!instructions.trim()) {
-      alert("Instructions are required");
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const frontmatter: SkillFrontmatter = {
-        name: name.trim(),
-        description: description.trim(),
-      };
-
-      if (allowedTools.trim()) {
-        frontmatter["allowed-tools"] = allowedTools.trim();
-      }
-
-      await electron.saveSkill(
-        projectPath,
-        skillId.trim(),
-        frontmatter,
-        instructions.trim()
-      );
-
-      onSave();
-    } catch (error) {
-      console.error("Failed to save skill:", error);
-      alert("Failed to save skill");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">
-            {skill ? "Edit Skill" : "Create New Skill"}
-          </h2>
-          <p className="text-muted-foreground mt-1">
-            {skill ? `Editing ${skill.id}` : "Create a new skill for this project"}
-          </p>
-        </div>
-        <div className="flex space-x-2">
-          <Button variant="outline" onClick={onCancel} disabled={isSaving}>
-            <X className="mr-2 h-4 w-4" />
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                Save Skill
-              </>
+        {/* Search - Right */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Search Skills</CardTitle>
+            <CardDescription>
+              Search by name, description, tags, or category (minimum 3 characters)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search skills..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Button
+                onClick={handleClearSearch}
+                variant="outline"
+                size="icon"
+                disabled={!searchQuery}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            {searchQuery.trim().length > 0 && searchQuery.trim().length < 3 && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Type at least 3 characters to search
+              </p>
             )}
-          </Button>
-        </div>
+            {searchQuery.trim().length >= 3 && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Found {filteredSkills.length} skill{filteredSkills.length !== 1 ? 's' : ''}
+              </p>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Basic Information</CardTitle>
-          <CardDescription>
-            Required metadata for the skill (stored in YAML frontmatter)
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">
-              Skill ID * <span className="text-xs text-muted-foreground">(directory name)</span>
-            </label>
-            <Input
-              type="text"
-              placeholder="pdf-processor"
-              value={skillId}
-              onChange={(e) => setSkillId(e.target.value.toLowerCase())}
-              disabled={!!skill} // Can't change ID when editing
-              className="mt-1 font-mono"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Lowercase letters, numbers, and hyphens only (max 64 characters)
-            </p>
-          </div>
+      {/* Skills Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {filteredSkills.map((skill) => (
+          <Card
+            key={skill.id}
+            className="hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => setSelectedSkill(skill)}
+          >
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <CardTitle className="text-lg">{skill.name}</CardTitle>
+                  <div className="flex items-center gap-2 mt-1">
+                    {skill.category && (
+                      <Badge variant="outline">{skill.category}</Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <CardDescription className="line-clamp-3 mt-2">
+                {skill.description}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {skill.tags && skill.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {skill.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-2 py-0.5 bg-muted text-xs rounded"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {skill.allowedTools && (
+                <div className="text-xs text-muted-foreground mt-2">
+                  <span className="font-medium">Tools:</span>{" "}
+                  {skill.allowedTools.split(",").slice(0, 3).map(t => t.trim()).join(", ")}
+                  {skill.allowedTools.split(",").length > 3 && "..."}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-          <div>
-            <label className="text-sm font-medium">Name *</label>
-            <Input
-              type="text"
-              placeholder="PDF Processor"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="mt-1"
-            />
-          </div>
+      {/* Skill Detail Modal */}
+      {selectedSkill && (
+        <SkillDetailModal
+          skill={selectedSkill}
+          projectPath={projectPath}
+          onClose={() => setSelectedSkill(null)}
+          onAddSkill={handleAddSkill}
+        />
+      )}
 
-          <div>
-            <label className="text-sm font-medium">
-              Description * <span className="text-xs text-muted-foreground">(max 1024 chars)</span>
-            </label>
-            <textarea
-              placeholder="Extract text and tables from PDF files, fill forms, merge documents. Use when working with PDF files or when the user mentions PDFs, forms, or document extraction."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="mt-1 w-full min-h-[100px] px-3 py-2 rounded-md border border-input bg-background text-sm"
-              maxLength={1024}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              {description.length}/1024 - Be specific about what the skill does and when to use it
-            </p>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">
-              Allowed Tools <span className="text-xs text-muted-foreground">(optional)</span>
-            </label>
-            <Input
-              type="text"
-              placeholder="Read, Grep, Glob"
-              value={allowedTools}
-              onChange={(e) => setAllowedTools(e.target.value)}
-              className="mt-1"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Comma-separated list of tools Claude can use (e.g., Read, Grep, Glob)
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Skill Instructions</CardTitle>
-          <CardDescription>
-            Main content that describes how to use this skill
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <textarea
-            placeholder="Enter detailed instructions for this skill..."
-            value={instructions}
-            onChange={(e) => setInstructions(e.target.value)}
-            className="w-full min-h-[300px] px-3 py-2 rounded-md border border-input bg-background text-sm font-mono"
-          />
-          <p className="text-xs text-muted-foreground mt-2">
-            Write clear, specific instructions. You can use Markdown formatting.
-          </p>
-        </CardContent>
-      </Card>
+      {filteredSkills.length === 0 && (
+        <Card>
+          <CardContent className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <p className="text-muted-foreground">
+                No skills found matching your criteria
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
