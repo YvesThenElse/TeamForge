@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FolderPlus, Loader2, RefreshCw, Search, X } from "lucide-react";
+import { FolderPlus, Loader2, RefreshCw, Search, X, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -9,6 +9,7 @@ import { useProjectStore } from "@/stores/projectStore";
 import * as electron from "@/services/electron";
 import { AgentDetailModal } from "./AgentDetailModal";
 import type { Agent } from "@/types";
+import type { AgentFile } from "@/types/agentFile";
 
 export function ConfigureAgentTab() {
   const { library, categories, setLibrary, setCategories, isLoading, setIsLoading } = useAgentStore();
@@ -18,6 +19,7 @@ export function ConfigureAgentTab() {
   const [agentSource, setAgentSource] = useState<string>("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [deployedAgents, setDeployedAgents] = useState<AgentFile[]>([]);
 
   // Load agent library
   const loadAgentLibrary = async () => {
@@ -46,6 +48,27 @@ export function ConfigureAgentTab() {
   useEffect(() => {
     loadAgentLibrary();
   }, []);
+
+  // Load deployed agents when project path changes
+  useEffect(() => {
+    if (projectPath) {
+      loadDeployedAgents();
+    } else {
+      setDeployedAgents([]);
+    }
+  }, [projectPath]);
+
+  const loadDeployedAgents = async () => {
+    if (!projectPath) return;
+
+    try {
+      const deployed = await electron.listAgentFiles(projectPath);
+      setDeployedAgents(deployed);
+    } catch (err) {
+      console.error("[ConfigureAgentTab] Failed to load deployed agents:", err);
+      setDeployedAgents([]);
+    }
+  };
 
   // Handle refresh
   const handleRefresh = async () => {
@@ -107,11 +130,18 @@ export function ConfigureAgentTab() {
       if (result.success) {
         alert(`Agent "${agent.name}" added successfully to ${result.filePath}`);
         setSelectedAgent(null);
+        // Reload deployed agents
+        loadDeployedAgents();
       }
     } catch (err) {
       console.error("Failed to add agent:", err);
       alert(`Failed to add agent: ${err}`);
     }
+  };
+
+  // Check if agent is deployed
+  const isAgentDeployed = (agentId: string): boolean => {
+    return deployedAgents.some(deployed => deployed.id === agentId);
   };
 
   if (isLoading && library.length === 0) {
@@ -246,41 +276,56 @@ export function ConfigureAgentTab() {
 
       {/* Agents Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredAgents.map((agent) => (
-          <Card
-            key={agent.id}
-            className="hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => setSelectedAgent(agent)}
-          >
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-lg">{agent.name}</CardTitle>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="outline">{agent.category}</Badge>
+        {filteredAgents.map((agent) => {
+          const deployed = isAgentDeployed(agent.id);
+          return (
+            <Card
+              key={agent.id}
+              className={`hover:shadow-md transition-shadow cursor-pointer ${
+                deployed ? 'border-green-500/50 bg-green-500/5' : ''
+              }`}
+              onClick={() => setSelectedAgent(agent)}
+            >
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      {agent.name}
+                      {deployed && (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      )}
+                    </CardTitle>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="outline">{agent.category}</Badge>
+                      {deployed && (
+                        <Badge variant="default" className="bg-green-500">
+                          Deployed
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <CardDescription className="line-clamp-3 mt-2">
-                {agent.description}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {agent.tags && agent.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {agent.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2 py-0.5 bg-muted text-xs rounded"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                <CardDescription className="line-clamp-3 mt-2">
+                  {agent.description}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {agent.tags && agent.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {agent.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-2 py-0.5 bg-muted text-xs rounded"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Agent Detail Modal */}

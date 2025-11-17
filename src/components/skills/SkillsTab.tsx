@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, Search, X } from "lucide-react";
+import { Loader2, Search, X, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -17,6 +17,7 @@ export function SkillsTab() {
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [deployedSkills, setDeployedSkills] = useState<Skill[]>([]);
 
   // Load template skills on mount
   useEffect(() => {
@@ -42,6 +43,27 @@ export function SkillsTab() {
 
     loadTemplates();
   }, []);
+
+  // Load deployed skills when project path changes
+  useEffect(() => {
+    if (projectPath) {
+      loadDeployedSkills();
+    } else {
+      setDeployedSkills([]);
+    }
+  }, [projectPath]);
+
+  const loadDeployedSkills = async () => {
+    if (!projectPath) return;
+
+    try {
+      const deployed = await electron.listSkills(projectPath);
+      setDeployedSkills(deployed);
+    } catch (err) {
+      console.error("[SkillsTab] Failed to load deployed skills:", err);
+      setDeployedSkills([]);
+    }
+  };
 
   // Filter by category first
   let filteredSkills = selectedCategory === "all"
@@ -102,11 +124,18 @@ export function SkillsTab() {
       if (result.success) {
         alert(`Skill "${skill.name}" added successfully to ${result.skillPath}`);
         setSelectedSkill(null);
+        // Reload deployed skills
+        loadDeployedSkills();
       }
     } catch (err) {
       console.error("Failed to add skill:", err);
       alert(`Failed to add skill: ${err}`);
     }
+  };
+
+  // Check if skill is deployed
+  const isSkillDeployed = (skillId: string): boolean => {
+    return deployedSkills.some(deployed => deployed.id === skillId);
   };
 
   if (loading) {
@@ -218,50 +247,65 @@ export function SkillsTab() {
 
       {/* Skills Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredSkills.map((skill) => (
-          <Card
-            key={skill.id}
-            className="hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => setSelectedSkill(skill)}
-          >
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-lg">{skill.name}</CardTitle>
-                  <div className="flex items-center gap-2 mt-1">
-                    {skill.category && (
-                      <Badge variant="outline">{skill.category}</Badge>
-                    )}
+        {filteredSkills.map((skill) => {
+          const deployed = isSkillDeployed(skill.id);
+          return (
+            <Card
+              key={skill.id}
+              className={`hover:shadow-md transition-shadow cursor-pointer ${
+                deployed ? 'border-green-500/50 bg-green-500/5' : ''
+              }`}
+              onClick={() => setSelectedSkill(skill)}
+            >
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      {skill.name}
+                      {deployed && (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      )}
+                    </CardTitle>
+                    <div className="flex items-center gap-2 mt-1">
+                      {skill.category && (
+                        <Badge variant="outline">{skill.category}</Badge>
+                      )}
+                      {deployed && (
+                        <Badge variant="default" className="bg-green-500">
+                          Deployed
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <CardDescription className="line-clamp-3 mt-2">
-                {skill.description}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {skill.tags && skill.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {skill.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2 py-0.5 bg-muted text-xs rounded"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {skill.allowedTools && (
-                <div className="text-xs text-muted-foreground mt-2">
-                  <span className="font-medium">Tools:</span>{" "}
-                  {skill.allowedTools.split(",").slice(0, 3).map(t => t.trim()).join(", ")}
-                  {skill.allowedTools.split(",").length > 3 && "..."}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                <CardDescription className="line-clamp-3 mt-2">
+                  {skill.description}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {skill.tags && skill.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {skill.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-2 py-0.5 bg-muted text-xs rounded"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {skill.allowedTools && (
+                  <div className="text-xs text-muted-foreground mt-2">
+                    <span className="font-medium">Tools:</span>{" "}
+                    {skill.allowedTools.split(",").slice(0, 3).map(t => t.trim()).join(", ")}
+                    {skill.allowedTools.split(",").length > 3 && "..."}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Skill Detail Modal */}

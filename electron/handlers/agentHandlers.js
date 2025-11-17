@@ -17,7 +17,8 @@ function getAgentRepoPath() {
 
 // Fallback to local agents_template if Git repo doesn't exist
 function getFallbackAgentPath() {
-  return path.join(__dirname, 'agents_template');
+  // __dirname is electron/handlers/, so go up two levels to project root
+  return path.join(__dirname, '..', '..', 'agents_template');
 }
 
 function parseFrontmatter(content) {
@@ -56,9 +57,14 @@ function parseFrontmatter(content) {
   return { frontmatter, template };
 }
 
-async function scanAgentDirectory(dir, category = null) {
+async function scanAgentDirectory(dir, category = null, baseDir = null) {
   const agents = [];
   const entries = await fs.readdir(dir, { withFileTypes: true });
+
+  // Set baseDir on first call
+  if (baseDir === null) {
+    baseDir = dir;
+  }
 
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
@@ -66,19 +72,20 @@ async function scanAgentDirectory(dir, category = null) {
     if (entry.isDirectory()) {
       // Recursively scan subdirectories
       const subCategory = category || entry.name;
-      const subAgents = await scanAgentDirectory(fullPath, subCategory);
+      const subAgents = await scanAgentDirectory(fullPath, subCategory, baseDir);
       agents.push(...subAgents);
     } else if (entry.isFile() && entry.name.endsWith('.md') && entry.name.toLowerCase() !== 'readme.md') {
       // Skip README.md files, parse agent files only
       const content = await fs.readFile(fullPath, 'utf-8');
       const { frontmatter, template } = parseFrontmatter(content);
 
-      // Generate ID from filename
-      const id = entry.name.replace('.md', '');
+      // Generate ID from relative path to ensure uniqueness
+      const relativePath = path.relative(baseDir, fullPath);
+      const id = relativePath.replace(/\\/g, '/').replace('.md', '').replace(/\//g, '-');
 
       agents.push({
         id,
-        name: frontmatter.name || id,
+        name: frontmatter.name || entry.name.replace('.md', ''),
         description: frontmatter.description || '',
         tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
         category: frontmatter.category || category || 'general',

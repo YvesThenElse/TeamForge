@@ -9,9 +9,11 @@ interface SkillDetailModalProps {
   projectPath: string | null;
   onClose: () => void;
   onAddSkill: (skill: Skill) => void;
+  onRemoveSkill?: (skillId: string) => void;
+  isDeployed?: boolean;
 }
 
-export function SkillDetailModal({ skill, projectPath, onClose, onAddSkill }: SkillDetailModalProps) {
+export function SkillDetailModal({ skill, projectPath, onClose, onAddSkill, onRemoveSkill, isDeployed }: SkillDetailModalProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopyInstructions = () => {
@@ -159,21 +161,34 @@ ${skill.instructions || "Instructions go here..."}`}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 p-6 border-t border-border">
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
-          <Button
-            onClick={() => onAddSkill(skill)}
-            disabled={!projectPath}
-          >
-            Add this skill
-          </Button>
-          {!projectPath && (
-            <p className="text-xs text-muted-foreground mr-auto">
-              Select a project first
-            </p>
-          )}
+        <div className="flex items-center justify-between gap-2 p-6 border-t border-border">
+          <div className="flex-1">
+            {!projectPath && (
+              <p className="text-xs text-muted-foreground">
+                Select a project first
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>
+              Close
+            </Button>
+            {isDeployed && onRemoveSkill ? (
+              <Button
+                onClick={() => onRemoveSkill(skill.id)}
+                variant="destructive"
+              >
+                Remove from project
+              </Button>
+            ) : (
+              <Button
+                onClick={() => onAddSkill(skill)}
+                disabled={!projectPath}
+              >
+                Add this skill
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

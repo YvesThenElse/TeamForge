@@ -5,9 +5,49 @@ export function registerConfigHandlers(ipcMain) {
   // Load TeamForge config
   ipcMain.handle('config:load', async (event, { projectPath }) => {
     try {
-      const configPath = path.join(projectPath, '.teamforge', 'config.json');
-      const content = await fs.readFile(configPath, 'utf-8');
-      return JSON.parse(content);
+      const teamforgeDir = path.join(projectPath, '.teamforge');
+      const configPath = path.join(teamforgeDir, 'config.json');
+
+      try {
+        const content = await fs.readFile(configPath, 'utf-8');
+        return JSON.parse(content);
+      } catch (error) {
+        if (error.code === 'ENOENT') {
+          // File doesn't exist, create default config
+          console.log('[config:load] Config file not found, creating default...');
+
+          // Get project name from path
+          const projectName = path.basename(projectPath);
+
+          // Create default config
+          const defaultConfig = {
+            version: '1.0.0',
+            project: {
+              name: projectName,
+              project_type: 'unknown',
+              path: projectPath,
+              detected_technologies: [],
+            },
+            active_agents: [],
+            customizations: {},
+            workflow: {
+              enabled: false,
+              sequence: [],
+            },
+            last_analyzed: new Date().toISOString(),
+          };
+
+          // Ensure .teamforge directory exists
+          await fs.mkdir(teamforgeDir, { recursive: true });
+
+          // Save default config
+          await fs.writeFile(configPath, JSON.stringify(defaultConfig, null, 2), 'utf-8');
+
+          console.log('[config:load] Default config created successfully');
+          return defaultConfig;
+        }
+        throw error;
+      }
     } catch (error) {
       throw new Error(`Failed to load config: ${error.message}`);
     }

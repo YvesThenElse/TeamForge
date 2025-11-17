@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, Loader2, GitBranch, ArrowRight, FolderOpen, CheckCircle, XCircle, Info, Circle } from "lucide-react";
+import { AlertCircle, Loader2, GitBranch, ArrowRight, FolderOpen, CheckCircle, XCircle, Info, Circle, BookOpen } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { useProjectStore } from "@/stores/projectStore";
@@ -7,19 +7,24 @@ import * as electron from "@/services/electron";
 import type { AgentFile } from "@/types/agentFile";
 import type { ClaudeInfo } from "@/types/claudeInfo";
 import type { TeamForgeConfig } from "@/types/config";
+import type { Skill } from "@/types/skill";
 import { AgentDetailModal } from "./AgentDetailModal";
+import { SkillDetailModal } from "../skills/SkillDetailModal";
 
 export function ProjectAgentsTab() {
   const { projectPath } = useProjectStore();
   const [agents, setAgents] = useState<AgentFile[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<AgentFile | null>(null);
+  const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
   const [claudeInfo, setClaudeInfo] = useState<ClaudeInfo | null>(null);
   const [config, setConfig] = useState<TeamForgeConfig | null>(null);
 
   useEffect(() => {
     if (projectPath) {
       loadAgents();
+      loadSkills();
       loadClaudeInfo();
       loadConfig();
     }
@@ -36,6 +41,17 @@ export function ProjectAgentsTab() {
       console.error("Failed to load agents:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSkills = async () => {
+    if (!projectPath) return;
+
+    try {
+      const skillFiles = await electron.listSkills(projectPath);
+      setSkills(skillFiles);
+    } catch (err) {
+      console.error("Failed to load skills:", err);
     }
   };
 
@@ -57,7 +73,8 @@ export function ProjectAgentsTab() {
       const cfg = await electron.loadTeamforgeConfig(projectPath);
       setConfig(cfg);
     } catch (err) {
-      console.error("Failed to load TeamForge config:", err);
+      // Config will be created automatically if it doesn't exist
+      // No need to log error, just set to null
       setConfig(null);
     }
   };
@@ -81,6 +98,23 @@ export function ProjectAgentsTab() {
     } catch (err) {
       console.error("Failed to remove agent:", err);
       alert("Failed to remove agent. Check console for details.");
+    }
+  };
+
+  const handleRemoveSkill = async (skillId: string) => {
+    if (!projectPath) return;
+
+    if (!confirm("Are you sure you want to remove this skill from the project?")) {
+      return;
+    }
+
+    try {
+      await electron.deleteSkill(projectPath, skillId);
+      await loadSkills();
+      setSelectedSkill(null);
+    } catch (err) {
+      console.error("Failed to remove skill:", err);
+      alert("Failed to remove skill. Check console for details.");
     }
   };
 
@@ -147,7 +181,7 @@ export function ProjectAgentsTab() {
       <div>
         <h2 className="text-2xl font-bold">Deployed Configuration</h2>
         <p className="text-muted-foreground mt-1">
-          Agents configured in .claude/agents/ • {agents.length} active
+          {agents.length} agent{agents.length !== 1 ? 's' : ''} and {skills.length} skill{skills.length !== 1 ? 's' : ''} configured
         </p>
       </div>
 
@@ -190,7 +224,21 @@ export function ProjectAgentsTab() {
                   <div>
                     <p className="text-sm font-medium">agents/ directory</p>
                     <p className="text-xs text-muted-foreground">
-                      {claudeInfo.agentsDir ? "Present" : "Not found"}
+                      {claudeInfo.agentsDir ? `Present (${agents.length})` : "Not found"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  {claudeInfo.skillsDir ? (
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <Info className="h-5 w-5 text-muted-foreground" />
+                  )}
+                  <div>
+                    <p className="text-sm font-medium">skills/ directory</p>
+                    <p className="text-xs text-muted-foreground">
+                      {claudeInfo.skillsDir ? `Present (${skills.length})` : "Optional"}
                     </p>
                   </div>
                 </div>
@@ -365,43 +413,115 @@ export function ProjectAgentsTab() {
         </CardContent>
       </Card>
 
-      {/* Agent Cards Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {agents.map((agent) => (
-          <Card
-            key={agent.id}
-            className="hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => handleAgentClick(agent)}
-          >
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-lg">{agent.name}</CardTitle>
-                  <CardDescription className="line-clamp-2 mt-1">
-                    {agent.description || "No description"}
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Model:</span>
-                  <Badge variant="outline">{agent.model || "inherit"}</Badge>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Tools:</span>
-                  <span className="text-xs truncate ml-2 max-w-[150px]">
-                    {agent.tools === "all" ? "All tools" : agent.tools}
-                  </span>
-                </div>
-                <div className="text-xs text-muted-foreground mt-2">
-                  Click to view details
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      {/* Deployed Items Grid */}
+      <div className="space-y-6">
+        {/* Agents Section */}
+        {agents.length > 0 && (
+          <div>
+            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+              <GitBranch className="h-5 w-5" />
+              Agents ({agents.length})
+            </h3>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {agents.map((agent) => (
+                <Card
+                  key={agent.id}
+                  className="hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => handleAgentClick(agent)}
+                >
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg">{agent.name}</CardTitle>
+                        <CardDescription className="line-clamp-2 mt-1">
+                          {agent.description || "No description"}
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Model:</span>
+                        <Badge variant="outline">{agent.model || "inherit"}</Badge>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Tools:</span>
+                        <span className="text-xs truncate ml-2 max-w-[150px]">
+                          {agent.tools === "all" ? "All tools" : agent.tools}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-2">
+                        Click to view details
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Skills Section */}
+        {skills.length > 0 && (
+          <div>
+            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+              <BookOpen className="h-5 w-5" />
+              Skills ({skills.length})
+            </h3>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {skills.map((skill) => (
+                <Card
+                  key={skill.id}
+                  className="hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => setSelectedSkill(skill)}
+                >
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg">{skill.name}</CardTitle>
+                        {skill.category && (
+                          <div className="mt-1">
+                            <Badge variant="outline">{skill.category}</Badge>
+                          </div>
+                        )}
+                        <CardDescription className="line-clamp-2 mt-1">
+                          {skill.description || "No description"}
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {skill.allowedTools && (
+                        <div className="text-xs text-muted-foreground">
+                          <span className="font-medium">Tools:</span>{" "}
+                          {skill.allowedTools.split(",").slice(0, 2).map(t => t.trim()).join(", ")}
+                          {skill.allowedTools.split(",").length > 2 && "..."}
+                        </div>
+                      )}
+                      {skill.tags && skill.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {skill.tags.slice(0, 3).map((tag) => (
+                            <span
+                              key={tag}
+                              className="px-2 py-0.5 bg-muted text-xs rounded"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="text-xs text-muted-foreground mt-2">
+                        Click to view details
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Agent Detail Modal */}
@@ -425,6 +545,21 @@ export function ProjectAgentsTab() {
             alert("This agent is already deployed in the project");
           }}
           onRemoveAgent={handleRemoveAgent}
+          isDeployed={true}
+        />
+      )}
+
+      {/* Skill Detail Modal */}
+      {selectedSkill && (
+        <SkillDetailModal
+          skill={selectedSkill}
+          projectPath={projectPath}
+          onClose={() => setSelectedSkill(null)}
+          onAddSkill={() => {
+            // Skill is already deployed, no action needed
+            alert("This skill is already deployed in the project");
+          }}
+          onRemoveSkill={handleRemoveSkill}
           isDeployed={true}
         />
       )}
