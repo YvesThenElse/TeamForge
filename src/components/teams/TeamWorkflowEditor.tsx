@@ -16,11 +16,14 @@ import { AgentNode } from "./AgentNode";
 import { AgentSidebar } from "./AgentSidebar";
 import { TeamActionBar } from "./TeamActionBar";
 import { ConfigPreviewDialog } from "./ConfigPreviewDialog";
+import { AgentDetailsDialog } from "./AgentDetailsDialog";
 import { useTeamStore } from "@/stores/teamStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useAgentStore } from "@/stores/agentStore";
-import { saveTeam, deployTeam } from "@/services/electron";
+import { saveTeam, deployTeam, listAgentFiles } from "@/services/electron";
 import type { Team } from "@/types/team";
+import type { AgentFile } from "@/types/agentFile";
+import type { Agent } from "@/types";
 
 const nodeTypes: NodeTypes = {
   agentNode: AgentNode,
@@ -53,6 +56,8 @@ export function TeamWorkflowEditor({ onClose }: TeamWorkflowEditorProps) {
   const [isConfigPreviewOpen, setIsConfigPreviewOpen] = useState(false);
   const [teamName, setTeamName] = useState(currentTeam?.name || "");
   const [teamDescription, setTeamDescription] = useState(currentTeam?.description || "");
+  const [deployedAgents, setDeployedAgents] = useState<AgentFile[]>([]);
+  const [selectedAgentForDetails, setSelectedAgentForDetails] = useState<Agent | null>(null);
 
   // Update team name and description when currentTeam changes
   useEffect(() => {
@@ -61,6 +66,31 @@ export function TeamWorkflowEditor({ onClose }: TeamWorkflowEditorProps) {
       setTeamDescription(currentTeam.description || "");
     }
   }, [currentTeam]);
+
+  // Load deployed agents when project path changes
+  useEffect(() => {
+    const loadDeployedAgents = async () => {
+      if (!projectPath) {
+        setDeployedAgents([]);
+        return;
+      }
+
+      try {
+        const deployed = await listAgentFiles(projectPath);
+        setDeployedAgents(deployed);
+      } catch (err) {
+        console.error("[TeamWorkflowEditor] Failed to load deployed agents:", err);
+        setDeployedAgents([]);
+      }
+    };
+
+    loadDeployedAgents();
+  }, [projectPath]);
+
+  // Handler for showing agent details
+  const handleNodeClick = useCallback((agent: Agent) => {
+    setSelectedAgentForDetails(agent);
+  }, []);
 
   // Initialize nodes and edges from team workflow
   useEffect(() => {
@@ -97,6 +127,7 @@ export function TeamWorkflowEditor({ onClose }: TeamWorkflowEditorProps) {
           agent,
           order: node.order,
           onDelete: () => removeAgentFromWorkflow(node.agentId),
+          onClick: () => agent && handleNodeClick(agent),
         },
       };
     });
@@ -116,7 +147,7 @@ export function TeamWorkflowEditor({ onClose }: TeamWorkflowEditorProps) {
     console.log('[TeamWorkflowEditor] Nodes:', workflowNodes);
     setNodes(workflowNodes);
     setEdges(workflowEdges);
-  }, [currentTeam, library, removeAgentFromWorkflow, setNodes, setEdges]);
+  }, [currentTeam, library, removeAgentFromWorkflow, setNodes, setEdges, handleNodeClick]);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -135,10 +166,22 @@ export function TeamWorkflowEditor({ onClose }: TeamWorkflowEditorProps) {
     console.log('[TeamWorkflowEditor] Current nodes.length:', nodes.length);
     console.log('[TeamWorkflowEditor] Current workflow length:', workflow.length);
 
-    // Calculate position for new node
-    const x = 100 + workflow.length * 250;
-    const y = 100;
-    console.log('[TeamWorkflowEditor] Calculated position:', { x, y });
+    // Calculate position for new node with better spacing
+    // Node dimensions: min-w-[200px] max-w-[250px], height ~120px
+    const NODE_WIDTH = 280;  // Width + margin
+    const NODE_HEIGHT = 180; // Height + margin
+    const NODES_PER_ROW = 4; // Max nodes per row before wrapping
+    const START_X = 100;
+    const START_Y = 100;
+
+    const index = workflow.length;
+    const row = Math.floor(index / NODES_PER_ROW);
+    const col = index % NODES_PER_ROW;
+
+    const x = START_X + col * NODE_WIDTH;
+    const y = START_Y + row * NODE_HEIGHT;
+
+    console.log('[TeamWorkflowEditor] Calculated position:', { x, y, row, col });
 
     addAgentToWorkflow(agentId, { x, y });
   };
@@ -212,6 +255,7 @@ export function TeamWorkflowEditor({ onClose }: TeamWorkflowEditorProps) {
           isOpen={isSidebarOpen}
           onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
           onAddAgent={handleAddAgent}
+          deployedAgents={deployedAgents}
         />
       </div>
 
@@ -220,6 +264,13 @@ export function TeamWorkflowEditor({ onClose }: TeamWorkflowEditorProps) {
         onClose={() => setIsConfigPreviewOpen(false)}
         team={currentTeam}
       />
+
+      {selectedAgentForDetails && (
+        <AgentDetailsDialog
+          agent={selectedAgentForDetails}
+          onClose={() => setSelectedAgentForDetails(null)}
+        />
+      )}
     </div>
   );
 }

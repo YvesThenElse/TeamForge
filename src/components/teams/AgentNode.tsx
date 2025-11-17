@@ -8,10 +8,11 @@ interface AgentNodeData {
   agent?: Agent;
   order: number;
   onDelete: () => void;
+  onClick?: () => void;
 }
 
 export const AgentNode = memo(({ data }: { data: AgentNodeData }) => {
-  const { agent, order, onDelete } = data;
+  const { agent, order, onDelete, onClick } = data;
 
   if (!agent) {
     return (
@@ -25,7 +26,10 @@ export const AgentNode = memo(({ data }: { data: AgentNodeData }) => {
     <div className="group relative">
       <Handle type="target" position={Position.Left} className="w-3 h-3" />
 
-      <div className="px-4 py-3 border-2 border-primary rounded-lg bg-white shadow-md min-w-[200px] max-w-[250px]">
+      <div
+        className="px-4 py-3 border-2 border-primary rounded-lg bg-white shadow-md min-w-[200px] max-w-[250px] cursor-pointer hover:shadow-lg transition-shadow"
+        onClick={onClick}
+      >
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
@@ -52,7 +56,10 @@ export const AgentNode = memo(({ data }: { data: AgentNodeData }) => {
           <Button
             variant="ghost"
             size="icon"
-            onClick={onDelete}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
             className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6"
           >
             <X className="h-3 w-3" />

@@ -1,18 +1,21 @@
 import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Plus, Search, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Search, ChevronDown, ChevronUp, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Badge } from "@/components/ui/Badge";
 import { useAgentStore } from "@/stores/agentStore";
 import { useTeamStore } from "@/stores/teamStore";
 import type { Agent } from "@/types";
+import type { AgentFile } from "@/types/agentFile";
 
 interface AgentSidebarProps {
   isOpen: boolean;
   onToggle: () => void;
   onAddAgent: (agentId: string) => void;
+  deployedAgents: AgentFile[];
 }
 
-export function AgentSidebar({ isOpen, onToggle, onAddAgent }: AgentSidebarProps) {
+export function AgentSidebar({ isOpen, onToggle, onAddAgent, deployedAgents }: AgentSidebarProps) {
   const { library } = useAgentStore();
   const currentTeam = useTeamStore((state) => state.currentTeam);
   const [searchQuery, setSearchQuery] = useState("");
@@ -49,6 +52,10 @@ export function AgentSidebar({ isOpen, onToggle, onAddAgent }: AgentSidebarProps
 
   const isAgentInWorkflow = (agentId: string) => {
     return currentTeam?.workflow.some((node) => node.agentId === agentId) || false;
+  };
+
+  const isAgentDeployed = (agentId: string) => {
+    return deployedAgents.some((deployed) => deployed.id === agentId);
   };
 
   return (
@@ -148,6 +155,7 @@ export function AgentSidebar({ isOpen, onToggle, onAddAgent }: AgentSidebarProps
                   key={agent.id}
                   agent={agent}
                   isAdded={isAgentInWorkflow(agent.id)}
+                  isDeployed={isAgentDeployed(agent.id)}
                   onAdd={() => onAddAgent(agent.id)}
                 />
               ))
@@ -162,19 +170,32 @@ export function AgentSidebar({ isOpen, onToggle, onAddAgent }: AgentSidebarProps
 interface AgentCardProps {
   agent: Agent;
   isAdded: boolean;
+  isDeployed: boolean;
   onAdd: () => void;
 }
 
-function AgentCard({ agent, isAdded, onAdd }: AgentCardProps) {
+function AgentCard({ agent, isAdded, isDeployed, onAdd }: AgentCardProps) {
   return (
-    <div className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+    <div className={`p-3 border rounded-lg hover:bg-muted/50 transition-colors ${
+      isDeployed ? 'border-green-500/50 bg-green-500/5' : ''
+    }`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-sm truncate">{agent.name}</div>
+          <div className="font-medium text-sm truncate flex items-center gap-1">
+            {agent.name}
+            {isDeployed && (
+              <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
+            )}
+          </div>
           <div className="text-xs text-muted-foreground line-clamp-2 mt-1">
             {agent.description}
           </div>
           <div className="flex flex-wrap gap-1 mt-2">
+            {isDeployed && (
+              <Badge variant="default" className="bg-green-500 text-white text-xs h-5">
+                Deployed
+              </Badge>
+            )}
             {agent.tags.slice(0, 2).map((tag) => (
               <span
                 key={tag}
