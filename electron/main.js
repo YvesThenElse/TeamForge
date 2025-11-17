@@ -16,6 +16,7 @@ import { registerAgentFileHandlers } from './handlers/agentFileHandlers.js';
 import { registerSkillHandlers } from './handlers/skillHandlers.js';
 import { registerTeamHandlers } from './handlers/teamHandlers.js';
 import { registerAgentRepositoryHandlers } from './handlers/agentRepositoryHandlers.js';
+import { registerHookHandlers } from './handlers/hookHandlers.js';
 
 let mainWindow;
 
@@ -51,6 +52,7 @@ app.whenReady().then(() => {
   registerSkillHandlers(ipcMain);
   registerTeamHandlers(ipcMain);
   registerAgentRepositoryHandlers(ipcMain);
+  registerHookHandlers(ipcMain);
 
   // Basic dialog handler for file/folder selection
   ipcMain.handle('dialog:selectFolder', async () => {

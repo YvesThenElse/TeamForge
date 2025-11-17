@@ -11,6 +11,7 @@ import type {
 import type { ClaudeInfo, GlobalClaudeInfo } from "@/types/claudeInfo";
 import type { Skill, SkillFrontmatter } from "@/types/skill";
 import type { Team } from "@/types/team";
+import type { Hook } from "@/types/hook";
 
 // Access the Electron API exposed via preload script
 declare global {
@@ -128,6 +129,24 @@ declare global {
         source: string;
         loadedFrom: string;
       }>;
+
+      // Hook commands
+      loadTemplateHooks: () => Promise<Hook[]>;
+      listHooks: (projectPath: string) => Promise<Array<{
+        event: string;
+        matcher: string;
+        command: string;
+        type: string;
+      }>>;
+      deployHook: (projectPath: string, hook: Hook) => Promise<string>;
+      removeHook: (
+        projectPath: string,
+        hookEvent: string,
+        matcher: string,
+        command: string
+      ) => Promise<string>;
+      hookDirExists: (projectPath: string) => Promise<boolean>;
+      ensureHooksDir: (projectPath: string) => Promise<string>;
     };
   }
 }
@@ -462,4 +481,45 @@ export async function deleteAgentRepository() {
 
 export async function reloadAgents() {
   return window.electronAPI.reloadAgents();
+}
+
+// ============================================================================
+// Hook Commands
+// ============================================================================
+
+export async function loadTemplateHooks(): Promise<Hook[]> {
+  return window.electronAPI.loadTemplateHooks();
+}
+
+export async function listHooks(projectPath: string): Promise<Array<{
+  event: string;
+  matcher: string;
+  command: string;
+  type: string;
+}>> {
+  return window.electronAPI.listHooks(projectPath);
+}
+
+export async function deployHook(
+  projectPath: string,
+  hook: Hook
+): Promise<string> {
+  return window.electronAPI.deployHook(projectPath, hook);
+}
+
+export async function removeHook(
+  projectPath: string,
+  hookEvent: string,
+  matcher: string,
+  command: string
+): Promise<string> {
+  return window.electronAPI.removeHook(projectPath, hookEvent, matcher, command);
+}
+
+export async function hookDirExists(projectPath: string): Promise<boolean> {
+  return window.electronAPI.hookDirExists(projectPath);
+}
+
+export async function ensureHooksDir(projectPath: string): Promise<string> {
+  return window.electronAPI.ensureHooksDir(projectPath);
 }

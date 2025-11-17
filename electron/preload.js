@@ -123,4 +123,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('agentRepo:delete'),
   reloadAgents: () =>
     ipcRenderer.invoke('agent:reload'),
+
+  // Hook commands
+  loadTemplateHooks: () =>
+    ipcRenderer.invoke('hook:loadTemplates'),
+  listHooks: (projectPath) =>
+    ipcRenderer.invoke('hook:list', { projectPath }),
+  deployHook: (projectPath, hook) =>
+    ipcRenderer.invoke('hook:deploy', { projectPath, hook }),
+  removeHook: (projectPath, hookEvent, matcher, command) =>
+    ipcRenderer.invoke('hook:remove', { projectPath, hookEvent, matcher, command }),
+  hookDirExists: (projectPath) =>
+    ipcRenderer.invoke('hook:dirExists', { projectPath }),
+  ensureHooksDir: (projectPath) =>
+    ipcRenderer.invoke('hook:ensureDir', { projectPath }),
 });
