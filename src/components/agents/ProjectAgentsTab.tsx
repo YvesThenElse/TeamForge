@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, Loader2, GitBranch, ArrowRight, FolderOpen, CheckCircle, XCircle, Info, Circle, BookOpen } from "lucide-react";
+import { AlertCircle, Loader2, FolderOpen, CheckCircle, XCircle, BookOpen, Wrench, Eye } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { useProjectStore } from "@/stores/projectStore";
 import * as electron from "@/services/electron";
 import type { AgentFile } from "@/types/agentFile";
-import type { ClaudeInfo } from "@/types/claudeInfo";
-import type { TeamForgeConfig } from "@/types/config";
 import type { Skill } from "@/types/skill";
 import { AgentDetailModal } from "./AgentDetailModal";
 import { SkillDetailModal } from "../skills/SkillDetailModal";
@@ -18,116 +17,74 @@ export function ProjectAgentsTab() {
   const [loading, setLoading] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<AgentFile | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
-  const [claudeInfo, setClaudeInfo] = useState<ClaudeInfo | null>(null);
-  const [config, setConfig] = useState<TeamForgeConfig | null>(null);
+  const [claudeDirExists, setClaudeDirExists] = useState(false);
 
   useEffect(() => {
     if (projectPath) {
-      loadAgents();
-      loadSkills();
-      loadClaudeInfo();
-      loadConfig();
+      loadConfiguration();
     }
   }, [projectPath]);
 
-  const loadAgents = async () => {
+  const loadConfiguration = async () => {
     if (!projectPath) return;
 
     setLoading(true);
     try {
-      const agentFiles = await electron.listAgentFiles(projectPath);
+      // Load all config in parallel
+      const [agentFiles, skillFiles, claudeInfo] = await Promise.all([
+        electron.listAgentFiles(projectPath),
+        electron.listSkills(projectPath),
+        electron.getClaudeInfo(projectPath),
+      ]);
+
       setAgents(agentFiles);
+      setSkills(skillFiles);
+      setClaudeDirExists(claudeInfo.exists);
     } catch (err) {
-      console.error("Failed to load agents:", err);
+      console.error("Failed to load configuration:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadSkills = async () => {
-    if (!projectPath) return;
-
-    try {
-      const skillFiles = await electron.listSkills(projectPath);
-      setSkills(skillFiles);
-    } catch (err) {
-      console.error("Failed to load skills:", err);
-    }
-  };
-
-  const loadClaudeInfo = async () => {
-    if (!projectPath) return;
-
-    try {
-      const info = await electron.getClaudeInfo(projectPath);
-      setClaudeInfo(info);
-    } catch (err) {
-      console.error("Failed to load Claude info:", err);
-    }
-  };
-
-  const loadConfig = async () => {
-    if (!projectPath) return;
-
-    try {
-      const cfg = await electron.loadTeamforgeConfig(projectPath);
-      setConfig(cfg);
-    } catch (err) {
-      // Config will be created automatically if it doesn't exist
-      // No need to log error, just set to null
-      setConfig(null);
-    }
-  };
-
-  const handleAgentClick = (agent: AgentFile) => {
-    setSelectedAgent(agent);
-  };
-
   const handleRemoveAgent = async (agentId: string) => {
-    if (!projectPath) return;
-
-    if (!confirm("Are you sure you want to remove this agent from the project?")) {
-      return;
-    }
+    if (!projectPath || !confirm("Remove this agent from the project?")) return;
 
     try {
       await electron.deleteAgentFile(projectPath, agentId);
-      await loadAgents();
-      await loadConfig();
+      await loadConfiguration();
       setSelectedAgent(null);
     } catch (err) {
       console.error("Failed to remove agent:", err);
-      alert("Failed to remove agent. Check console for details.");
+      alert("Failed to remove agent");
     }
   };
 
   const handleRemoveSkill = async (skillId: string) => {
-    if (!projectPath) return;
-
-    if (!confirm("Are you sure you want to remove this skill from the project?")) {
-      return;
-    }
+    if (!projectPath || !confirm("Remove this skill from the project?")) return;
 
     try {
       await electron.deleteSkill(projectPath, skillId);
-      await loadSkills();
+      await loadConfiguration();
       setSelectedSkill(null);
     } catch (err) {
       console.error("Failed to remove skill:", err);
-      alert("Failed to remove skill. Check console for details.");
+      alert("Failed to remove skill");
     }
   };
 
   if (!projectPath) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No Project Selected</h3>
-          <p className="text-muted-foreground">
-            Please select a project first to manage agents
-          </p>
-        </div>
+        <Card className="w-96">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Project Selected</h3>
+              <p className="text-muted-foreground">Select a project to view its configuration</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -137,37 +94,33 @@ export function ProjectAgentsTab() {
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading deployed agents...</p>
+          <p className="text-muted-foreground">Loading configuration...</p>
         </div>
       </div>
     );
   }
 
-  if (agents.length === 0) {
+  const hasNoConfig = agents.length === 0 && skills.length === 0;
+
+  if (hasNoConfig) {
     return (
       <div className="flex items-center justify-center h-full">
-        <Card className="max-w-lg">
+        <Card className="max-w-xl">
           <CardHeader>
-            <CardTitle>No Agents Deployed</CardTitle>
+            <CardTitle>No Configuration Deployed</CardTitle>
             <CardDescription>
-              This project doesn't have any sub-agents configured in .claude/agents/
+              This project has no agents or skills in .claude/
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Sub-agents are specialized AI assistants that Claude Code can delegate to
-                for specific tasks. They are stored as markdown files in the .claude/agents/
-                directory.
-              </p>
-              <div className="bg-muted p-4 rounded-lg">
-                <p className="text-sm font-medium mb-2">To add agents:</p>
-                <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                  <li>Browse the agent library in "Configure Agent"</li>
-                  <li>Select agents that fit your project needs</li>
-                  <li>Deploy them via git or copy from templates</li>
-                </ol>
-              </div>
+          <CardContent className="space-y-4">
+            <div className="bg-muted p-4 rounded-lg">
+              <p className="text-sm font-medium mb-2">Quick Start:</p>
+              <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                <li>Go to "Configure Agent" to browse the agent library</li>
+                <li>Select agents that fit your project needs</li>
+                <li>Deploy them to .claude/agents/</li>
+                <li>Optionally add skills from the "Skills" tab</li>
+              </ol>
             </div>
           </CardContent>
         </Card>
@@ -177,352 +130,160 @@ export function ProjectAgentsTab() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold">Deployed Configuration</h2>
-        <p className="text-muted-foreground mt-1">
-          {agents.length} agent{agents.length !== 1 ? 's' : ''} and {skills.length} skill{skills.length !== 1 ? 's' : ''} configured
-        </p>
+      {/* Header - Compact */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Project Configuration</h2>
+          <p className="text-muted-foreground text-sm">
+            {agents.length} agent{agents.length !== 1 ? 's' : ''}, {skills.length} skill{skills.length !== 1 ? 's' : ''}
+            {!claudeDirExists && <span className="text-yellow-600 ml-2">⚠ .claude/ missing</span>}
+          </p>
+        </div>
+        {claudeDirExists && (
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-green-500" />
+            <span className="text-sm text-green-600 font-medium">.claude/ configured</span>
+          </div>
+        )}
       </div>
 
-      {/* Claude Info Card */}
-      {claudeInfo && (
+      {/* Status Overview - Very Compact */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <FolderOpen className="h-4 w-4" />
+            Configuration Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <StatusBadge
+              icon={claudeDirExists ? CheckCircle : XCircle}
+              label=".claude/"
+              status={claudeDirExists ? "Present" : "Missing"}
+              variant={claudeDirExists ? "success" : "error"}
+            />
+            <StatusBadge
+              icon={agents.length > 0 ? CheckCircle : XCircle}
+              label="Agents"
+              status={agents.length > 0 ? `${agents.length} deployed` : "None"}
+              variant={agents.length > 0 ? "success" : "warning"}
+            />
+            <StatusBadge
+              icon={skills.length > 0 ? CheckCircle : AlertCircle}
+              label="Skills"
+              status={skills.length > 0 ? `${skills.length} deployed` : "None"}
+              variant={skills.length > 0 ? "success" : "muted"}
+            />
+            <StatusBadge
+              icon={Wrench}
+              label="Settings"
+              status="Configure →"
+              variant="muted"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Agents Table - Compact */}
+      {agents.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <FolderOpen className="h-5 w-5" />
-              <span>Claude Code Configuration</span>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Wrench className="h-4 w-4" />
+              Deployed Agents ({agents.length})
             </CardTitle>
-            <CardDescription>
-              Project configuration status
-            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {/* Directory Status */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center space-x-2">
-                  {claudeInfo.exists ? (
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                  ) : (
-                    <XCircle className="h-5 w-5 text-red-500" />
-                  )}
-                  <div>
-                    <p className="text-sm font-medium">.claude/ directory</p>
-                    <p className="text-xs text-muted-foreground">
-                      {claudeInfo.exists ? "Present" : "Not found"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  {claudeInfo.agentsDir ? (
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                  ) : (
-                    <XCircle className="h-5 w-5 text-red-500" />
-                  )}
-                  <div>
-                    <p className="text-sm font-medium">agents/ directory</p>
-                    <p className="text-xs text-muted-foreground">
-                      {claudeInfo.agentsDir ? `Present (${agents.length})` : "Not found"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  {claudeInfo.skillsDir ? (
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                  ) : (
-                    <Info className="h-5 w-5 text-muted-foreground" />
-                  )}
-                  <div>
-                    <p className="text-sm font-medium">skills/ directory</p>
-                    <p className="text-xs text-muted-foreground">
-                      {claudeInfo.skillsDir ? `Present (${skills.length})` : "Optional"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  {claudeInfo.settingsFile ? (
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                  ) : (
-                    <Info className="h-5 w-5 text-muted-foreground" />
-                  )}
-                  <div>
-                    <p className="text-sm font-medium">settings file</p>
-                    <p className="text-xs text-muted-foreground">
-                      {claudeInfo.settingsFile ? "Present" : "Optional"}
-                    </p>
-                  </div>
-                </div>
-
-                {claudeInfo.claudePath && (
-                  <div className="flex items-center space-x-2">
-                    <Info className="h-5 w-5 text-blue-500" />
-                    <div>
-                      <p className="text-sm font-medium">Path</p>
-                      <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                        {claudeInfo.claudePath}
-                      </p>
+            <div className="space-y-2">
+              {agents.map((agent) => (
+                <div
+                  key={agent.id}
+                  className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{agent.name}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {agent.model || "inherit"}
+                      </Badge>
                     </div>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      {agent.description || "No description"}
+                    </p>
                   </div>
-                )}
-              </div>
-
-              {/* Settings Content */}
-              {claudeInfo.settings && Object.keys(claudeInfo.settings).length > 0 && (
-                <div className="mt-4">
-                  <p className="text-sm font-medium mb-2">Settings:</p>
-                  <div className="bg-muted p-3 rounded-lg space-y-1">
-                    {Object.entries(claudeInfo.settings).map(([key, value]) => (
-                      <div key={key} className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">{key}:</span>
-                        <span className="font-mono">{String(value)}</span>
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-2 ml-4">
+                    <span className="text-xs text-muted-foreground">
+                      {typeof agent.tools === 'string' && agent.tools === '*' ? 'All tools' : 'Custom tools'}
+                    </span>
+                    <Button
+                      onClick={() => setSelectedAgent(agent)}
+                      variant="ghost"
+                      size="sm"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-              )}
-
-              {/* Info Message */}
-              {!claudeInfo.exists && (
-                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
-                  <p className="text-sm text-yellow-600 dark:text-yellow-500">
-                    The .claude/ directory is not present in this project. Claude Code uses
-                    this directory to store agent configurations and settings.
-                  </p>
-                </div>
-              )}
+              ))}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Workflow Visualization */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center space-x-2">
-                <GitBranch className="h-5 w-5" />
-                <span>Agent Workflow</span>
-              </CardTitle>
-              <CardDescription>
-                {config?.workflow?.enabled
-                  ? "Sequential workflow - agents execute in order"
-                  : "Independent agents - no specific execution order"}
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline">{agents.length} agents</Badge>
-              {config?.workflow?.enabled && (
-                <Badge variant="default" className="bg-blue-500">
-                  Workflow Enabled
-                </Badge>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* Visual workflow display */}
-          <div className={`flex flex-wrap gap-3 items-center p-4 rounded-lg ${
-            config?.workflow?.enabled
-              ? 'bg-blue-500/10 border-2 border-blue-500/20'
-              : 'bg-muted/30 border-2 border-dashed border-muted-foreground/20'
-          }`}>
-            {agents.map((agent, index) => {
-              const workflowStep = config?.workflow?.sequence?.find(
-                (step) => step.agentId === agent.id
-              );
-              const order = workflowStep?.order;
-
-              return (
-                <div key={agent.id} className="flex items-center">
-                  <button
-                    onClick={() => handleAgentClick(agent)}
-                    className={`group relative px-4 py-3 bg-card rounded-lg hover:shadow-md transition-all cursor-pointer ${
-                      config?.workflow?.enabled
-                        ? 'border-2 border-blue-500'
-                        : 'border-2 border-border'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-2">
-                      {config?.workflow?.enabled ? (
-                        <div className="h-6 w-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">
-                          {order !== undefined ? order + 1 : index + 1}
-                        </div>
-                      ) : (
-                        <Circle className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <span className="font-medium">{agent.name}</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {agent.model || "sonnet"}
-                    </div>
-
-                    {/* Hover tooltip */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-popover border border-border rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                      <p className="text-sm font-medium">{agent.name}</p>
-                      <p className="text-xs text-muted-foreground max-w-xs truncate">
-                        {agent.description}
-                      </p>
-                      {config?.workflow?.enabled && order !== undefined && (
-                        <p className="text-xs text-blue-500 mt-1">
-                          Execution order: {order + 1}
-                        </p>
-                      )}
-                    </div>
-                  </button>
-
-                  {/* Connector arrow - only show for workflow */}
-                  {config?.workflow?.enabled && index < agents.length - 1 && (
-                    <ArrowRight className="h-5 w-5 text-blue-500 mx-2 font-bold" />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Workflow Info */}
-          {config?.workflow?.enabled ? (
-            <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-              <div className="flex items-start gap-2">
-                <Info className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-blue-600 dark:text-blue-400">
-                  <p className="font-medium">Sequential Workflow Active</p>
-                  <p className="text-xs mt-1 text-blue-500">
-                    Agents will execute in the numbered order shown above. Each agent can pass context to the next.
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-              <div className="flex items-start gap-2">
-                <Info className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-muted-foreground">
-                  <p className="font-medium">Independent Agents</p>
-                  <p className="text-xs mt-1">
-                    These agents work independently without a specific execution order. Configure a workflow in the "Configure Team" tab to enable sequential execution.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Deployed Items Grid */}
-      <div className="space-y-6">
-        {/* Agents Section */}
-        {agents.length > 0 && (
-          <div>
-            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-              <GitBranch className="h-5 w-5" />
-              Agents ({agents.length})
-            </h3>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {agents.map((agent) => (
-                <Card
-                  key={agent.id}
-                  className="hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => handleAgentClick(agent)}
-                >
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{agent.name}</CardTitle>
-                        <CardDescription className="line-clamp-2 mt-1">
-                          {agent.description || "No description"}
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Model:</span>
-                        <Badge variant="outline">{agent.model || "inherit"}</Badge>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Tools:</span>
-                        <span className="text-xs truncate ml-2 max-w-[150px]">
-                          {agent.tools === "all" ? "All tools" : agent.tools}
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-2">
-                        Click to view details
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Skills Section */}
-        {skills.length > 0 && (
-          <div>
-            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
-              Skills ({skills.length})
-            </h3>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {/* Skills Table - Compact */}
+      {skills.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Deployed Skills ({skills.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
               {skills.map((skill) => (
-                <Card
+                <div
                   key={skill.id}
-                  className="hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => setSelectedSkill(skill)}
+                  className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
                 >
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{skill.name}</CardTitle>
-                        {skill.category && (
-                          <div className="mt-1">
-                            <Badge variant="outline">{skill.category}</Badge>
-                          </div>
-                        )}
-                        <CardDescription className="line-clamp-2 mt-1">
-                          {skill.description || "No description"}
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {skill.allowedTools && (
-                        <div className="text-xs text-muted-foreground">
-                          <span className="font-medium">Tools:</span>{" "}
-                          {skill.allowedTools.split(",").slice(0, 2).map(t => t.trim()).join(", ")}
-                          {skill.allowedTools.split(",").length > 2 && "..."}
-                        </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{skill.name}</span>
+                      {skill.category && (
+                        <Badge variant="outline" className="text-xs">
+                          {skill.category}
+                        </Badge>
                       )}
-                      {skill.tags && skill.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {skill.tags.slice(0, 3).map((tag) => (
-                            <span
-                              key={tag}
-                              className="px-2 py-0.5 bg-muted text-xs rounded"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      <div className="text-xs text-muted-foreground mt-2">
-                        Click to view details
-                      </div>
                     </div>
-                  </CardContent>
-                </Card>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      {skill.description || "No description"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 ml-4">
+                    {skill.tags && skill.tags.length > 0 && (
+                      <div className="flex gap-1">
+                        {skill.tags.slice(0, 2).map((tag) => (
+                          <span key={tag} className="px-2 py-0.5 bg-muted text-xs rounded">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <Button
+                      onClick={() => setSelectedSkill(skill)}
+                      variant="ghost"
+                      size="sm"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               ))}
             </div>
-          </div>
-        )}
-      </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Agent Detail Modal */}
       {selectedAgent && (
@@ -540,10 +301,7 @@ export function ProjectAgentsTab() {
           }}
           projectPath={projectPath}
           onClose={() => setSelectedAgent(null)}
-          onAddAgent={() => {
-            // Agent is already deployed, no action needed
-            alert("This agent is already deployed in the project");
-          }}
+          onAddAgent={() => alert("This agent is already deployed")}
           onRemoveAgent={handleRemoveAgent}
           isDeployed={true}
         />
@@ -555,14 +313,41 @@ export function ProjectAgentsTab() {
           skill={selectedSkill}
           projectPath={projectPath}
           onClose={() => setSelectedSkill(null)}
-          onAddSkill={() => {
-            // Skill is already deployed, no action needed
-            alert("This skill is already deployed in the project");
-          }}
+          onAddSkill={() => alert("This skill is already deployed")}
           onRemoveSkill={handleRemoveSkill}
           isDeployed={true}
         />
       )}
+    </div>
+  );
+}
+
+// Helper component for status badges
+function StatusBadge({
+  icon: Icon,
+  label,
+  status,
+  variant,
+}: {
+  icon: any;
+  label: string;
+  status: string;
+  variant: "success" | "error" | "warning" | "muted";
+}) {
+  const colors = {
+    success: "text-green-500",
+    error: "text-red-500",
+    warning: "text-yellow-500",
+    muted: "text-muted-foreground",
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <Icon className={`h-4 w-4 ${colors[variant]}`} />
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium">{label}</p>
+        <p className="text-xs text-muted-foreground truncate">{status}</p>
+      </div>
     </div>
   );
 }
