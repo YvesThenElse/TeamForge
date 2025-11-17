@@ -7,7 +7,7 @@ import type { Team } from "@/types/team";
 type ViewMode = "list" | "editor";
 
 export function ConfigureTeamTab() {
-  const { createTeam, setCurrentTeam } = useTeamStore();
+  const { createTeam, setCurrentTeam, currentTeam } = useTeamStore();
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [isNewTeam, setIsNewTeam] = useState(false);
 
@@ -30,17 +30,17 @@ export function ConfigureTeamTab() {
     setViewMode("list");
   };
 
+  if (viewMode === "list") {
+    return <TeamList onEditTeam={handleEditTeam} onCreateTeam={handleCreateTeam} />;
+  }
+
   return (
-    <div className="h-full">
-      {viewMode === "list" ? (
-        <TeamList onEditTeam={handleEditTeam} onCreateTeam={handleCreateTeam} />
-      ) : (
-        <TeamWorkflowEditor
-          team={useTeamStore.getState().currentTeam}
-          isNewTeam={isNewTeam}
-          onClose={handleCloseEditor}
-        />
-      )}
+    <div className="flex-1 flex flex-col min-h-0">
+      <TeamWorkflowEditor
+        team={currentTeam}
+        isNewTeam={isNewTeam}
+        onClose={handleCloseEditor}
+      />
     </div>
   );
 }

@@ -50,8 +50,8 @@ export function MainLayout() {
           onStepChange={setCurrentStep}
           hasProjectSelected={!!projectPath}
         />
-        <main className="flex-1 overflow-auto">
-          <div className="container mx-auto p-6">{renderContent()}</div>
+        <main className="flex-1 overflow-hidden flex flex-col relative">
+          <div className="container mx-auto p-6 flex-1 flex flex-col overflow-auto">{renderContent()}</div>
         </main>
       </div>
     </div>

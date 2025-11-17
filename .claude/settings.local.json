@@ -18,7 +18,9 @@
       "Bash(done)",
       "Bash(find:*)",
       "Bash(for dir in */)",
-      "Bash(do mv \"$dir/instructions.md\" \"$dir/SKILL.md\")"
+      "Bash(do mv \"$dir/instructions.md\" \"$dir/SKILL.md\")",
+      "WebSearch",
+      "WebFetch(domain:reactflow.dev)"
     ],
     "deny": [],
     "ask": []
