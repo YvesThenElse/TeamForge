@@ -1,6 +1,7 @@
-import { Save, Rocket, Eye, X } from "lucide-react";
+import { Save, Rocket, Eye, X, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 
 interface TeamActionBarProps {
   teamName: string;
@@ -11,6 +12,7 @@ interface TeamActionBarProps {
   onDeploy: () => void;
   onViewConfig: () => void;
   onCancel: () => void;
+  onGenerateDescription?: () => void;
 }
 
 export function TeamActionBar({
@@ -22,6 +24,7 @@ export function TeamActionBar({
   onDeploy,
   onViewConfig,
   onCancel,
+  onGenerateDescription,
 }: TeamActionBarProps) {
   return (
     <div className="border-b bg-background p-4">
@@ -35,12 +38,26 @@ export function TeamActionBar({
             onChange={(e) => onTeamNameChange(e.target.value)}
             className="font-semibold"
           />
-          <Input
-            type="text"
-            placeholder="Team Description"
-            value={teamDescription}
-            onChange={(e) => onTeamDescriptionChange(e.target.value)}
-          />
+          <div className="flex gap-2">
+            <Textarea
+              placeholder="Team Description"
+              value={teamDescription}
+              onChange={(e) => onTeamDescriptionChange(e.target.value)}
+              className="flex-1 resize-none"
+              rows={3}
+            />
+            {onGenerateDescription && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onGenerateDescription}
+                title="Generate description based on workflow"
+                className="self-start"
+              >
+                <Sparkles className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Actions */}

@@ -1,4 +1,4 @@
-import { FolderOpen, Bot, Settings, Users, Sparkles, Sliders, HelpCircle, Shield } from "lucide-react";
+import { FolderOpen, Settings, Users, Sparkles, Sliders, HelpCircle, Shield, FileCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
@@ -17,9 +17,9 @@ export function Sidebar({ currentStep, onStepChange, hasProjectSelected = false 
     },
     {
       id: "agents" as const,
-      label: "Agents",
-      icon: Bot,
-      description: "Manage sub-agents",
+      label: "Project Configuration",
+      icon: FileCheck,
+      description: "Current project setup",
     },
     {
       id: "configure-agents" as const,

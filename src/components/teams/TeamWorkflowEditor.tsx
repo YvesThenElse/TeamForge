@@ -221,6 +221,51 @@ export function TeamWorkflowEditor({ onClose }: TeamWorkflowEditorProps) {
     setIsConfigPreviewOpen(true);
   };
 
+  const handleGenerateDescription = () => {
+    if (!currentTeam || !workflow || workflow.length === 0) {
+      alert("Please add agents to the workflow first");
+      return;
+    }
+
+    // Sort workflow by order
+    const sortedWorkflow = [...workflow].sort((a, b) => a.order - b.order);
+
+    // Generate description based on Claude Code best practices
+    let description = `Sequential workflow with ${sortedWorkflow.length} specialized agents: `;
+
+    // Add agent names in order
+    const agentNames = sortedWorkflow.map((node, index) => {
+      const agent = library.find((a) => a.id === node.agentId);
+      if (!agent) return null;
+
+      if (index === sortedWorkflow.length - 1) {
+        return `then ${agent.name}`;
+      } else if (index === 0) {
+        return `First ${agent.name}`;
+      } else {
+        return `${agent.name}`;
+      }
+    }).filter(Boolean);
+
+    description += agentNames.join(', ') + '. ';
+
+    // Add workflow pattern explanation
+    description += `Each agent builds upon the previous agent's work in a coordinated pipeline. `;
+
+    // Add specific roles
+    const roles = sortedWorkflow.map((node, index) => {
+      const agent = library.find((a) => a.id === node.agentId);
+      if (!agent) return null;
+      return `${index + 1}. ${agent.name}: ${agent.description}`;
+    }).filter(Boolean);
+
+    if (roles.length > 0) {
+      description += `Workflow steps: ${roles.join(' → ')}`;
+    }
+
+    setTeamDescription(description);
+  };
+
   return (
     <div className="flex flex-col h-full">
       <TeamActionBar
@@ -232,6 +277,7 @@ export function TeamWorkflowEditor({ onClose }: TeamWorkflowEditorProps) {
         onDeploy={handleDeploy}
         onViewConfig={handleViewConfig}
         onCancel={onClose}
+        onGenerateDescription={handleGenerateDescription}
       />
 
       <div className="flex flex-1 overflow-hidden" style={{ minHeight: 0 }}>
