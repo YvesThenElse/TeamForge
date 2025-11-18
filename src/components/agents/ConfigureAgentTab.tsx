@@ -1,32 +1,36 @@
 import { useState, useEffect } from "react";
-import { FolderPlus, Loader2, RefreshCw, Search, X, CheckCircle } from "lucide-react";
+import { FolderPlus, Loader2, RefreshCw, Search, X, CheckCircle, Plus, Code } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { useAgentStore } from "@/stores/agentStore";
 import { useProjectStore } from "@/stores/projectStore";
+import { useSettingsStore } from "@/stores/settingsStore";
 import * as electron from "@/services/electron";
 import { AgentDetailModal } from "./AgentDetailModal";
+import { CreateAgentModal } from "./CreateAgentModal";
 import type { Agent } from "@/types";
 import type { AgentFile } from "@/types/agentFile";
 
 export function ConfigureAgentTab() {
   const { library, categories, setLibrary, setCategories, isLoading, setIsLoading } = useAgentStore();
   const { projectPath } = useProjectStore();
+  const { developerMode, setDeveloperMode } = useSettingsStore();
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [agentSource, setAgentSource] = useState<string>("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [deployedAgents, setDeployedAgents] = useState<AgentFile[]>([]);
 
   // Load agent library
-  const loadAgentLibrary = async () => {
+  const loadAgentLibrary = async (devMode = developerMode) => {
     setIsLoading(true);
     try {
-      console.log("[ConfigureAgentTab] Loading agent library...");
-      const libraryData = await electron.getAgentLibrary();
+      console.log(`[ConfigureAgentTab] Loading agent library ${devMode ? '(dev mode)' : ''}...`);
+      const libraryData = await electron.getAgentLibrary(devMode);
       console.log("[ConfigureAgentTab] Loaded library:", libraryData);
       setLibrary(libraryData.agents);
       setAgentSource(libraryData.source || "unknown");
@@ -48,6 +52,11 @@ export function ConfigureAgentTab() {
   useEffect(() => {
     loadAgentLibrary();
   }, []);
+
+  // Reload when developer mode changes
+  useEffect(() => {
+    loadAgentLibrary(developerMode);
+  }, [developerMode]);
 
   // Load deployed agents when project path changes
   useEffect(() => {
@@ -74,14 +83,19 @@ export function ConfigureAgentTab() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await electron.reloadAgents();
-      await loadAgentLibrary();
+      await electron.reloadAgents(developerMode);
+      await loadAgentLibrary(developerMode);
     } catch (err) {
       console.error("[ConfigureAgentTab] Failed to refresh agents:", err);
       alert(`Failed to refresh agents: ${err}`);
     } finally {
       setIsRefreshing(false);
     }
+  };
+
+  // Toggle developer mode
+  const handleToggleDeveloperMode = () => {
+    setDeveloperMode(!developerMode);
   };
 
   // Filter by category first
@@ -164,35 +178,52 @@ export function ConfigureAgentTab() {
             {library.length} agent{library.length !== 1 ? 's' : ''} loaded
             {agentSource && (
               <span className="ml-1">
-                from <span className="font-medium">{agentSource === 'git' ? 'Git repository' : 'local templates'}</span>
+                from <span className="font-medium">
+                  {agentSource === 'git' ? 'Git repository' : agentSource === 'dev' ? 'dev templates' : 'local templates'}
+                </span>
               </span>
             )}
           </p>
         </div>
-        <Button
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          variant="outline"
-          size="sm"
-        >
-          {isRefreshing ? (
-            <>
-              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-              Refreshing...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh
-            </>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            variant="ghost"
+            size="sm"
+          >
+            {isRefreshing ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+          </Button>
+          {developerMode && (
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              variant="default"
+              size="sm"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create New
+            </Button>
           )}
-        </Button>
+          <Button
+            onClick={handleToggleDeveloperMode}
+            variant={developerMode ? "default" : "outline"}
+            size="sm"
+          >
+            <Code className="mr-2 h-4 w-4" />
+            {developerMode ? "Dev Mode (ON)" : "Dev Mode"}
+          </Button>
+        </div>
       </div>
 
-      {/* Categories and Search on same row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Categories - Left */}
-        <Card>
+      {/* Categories and Search on same row - Hidden in Dev Mode */}
+      {!developerMode && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Categories - Left */}
+          <Card>
           <CardHeader>
             <CardTitle>Categories</CardTitle>
             <CardDescription>
@@ -273,10 +304,11 @@ export function ConfigureAgentTab() {
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Agents Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredAgents.map((agent) => {
+        {(developerMode ? library : filteredAgents).map((agent) => {
           const deployed = isAgentDeployed(agent.id);
           return (
             <Card
@@ -335,6 +367,16 @@ export function ConfigureAgentTab() {
           projectPath={projectPath}
           onClose={() => setSelectedAgent(null)}
           onAddAgent={handleAddAgent}
+          devMode={developerMode}
+          onRefresh={loadAgentLibrary}
+        />
+      )}
+
+      {/* Create Agent Modal */}
+      {showCreateModal && (
+        <CreateAgentModal
+          onClose={() => setShowCreateModal(false)}
+          onRefresh={loadAgentLibrary}
         />
       )}
 

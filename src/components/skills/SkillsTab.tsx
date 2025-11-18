@@ -1,48 +1,59 @@
 import { useState, useEffect } from "react";
-import { Loader2, Search, X, CheckCircle } from "lucide-react";
+import { Loader2, Search, X, CheckCircle, RefreshCw, Code, Plus, FolderPlus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { useProjectStore } from "@/stores/projectStore";
+import { useSettingsStore } from "@/stores/settingsStore";
 import type { Skill } from "@/types/skill";
 import * as electron from "@/services/electron";
 import { SkillDetailModal } from "./SkillDetailModal";
+import { CreateSkillModal } from "./CreateSkillModal";
 
 export function SkillsTab() {
   const { projectPath } = useProjectStore();
+  const { developerMode, setDeveloperMode } = useSettingsStore();
   const [library, setLibrary] = useState<Skill[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [deployedSkills, setDeployedSkills] = useState<Skill[]>([]);
 
-  // Load template skills on mount
+  // Load template skills
+  const loadTemplates = async (devMode = developerMode) => {
+    setLoading(true);
+    try {
+      console.log(`[SkillsTab] Loading template skills ${devMode ? '(dev mode)' : ''}...`);
+      const templates = await electron.loadTemplateSkills(devMode);
+      console.log("[SkillsTab] Loaded templates:", templates);
+      setLibrary(templates);
+
+      // Extract unique categories
+      const uniqueCategories = Array.from(
+        new Set(templates.map((s) => s.category).filter(Boolean))
+      ).sort() as string[];
+      setCategories(uniqueCategories);
+    } catch (err) {
+      console.error("[SkillsTab] Failed to load templates:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load on mount
   useEffect(() => {
-    const loadTemplates = async () => {
-      setLoading(true);
-      try {
-        console.log("[SkillsTab] Loading template skills...");
-        const templates = await electron.loadTemplateSkills();
-        console.log("[SkillsTab] Loaded templates:", templates);
-        setLibrary(templates);
-
-        // Extract unique categories
-        const uniqueCategories = Array.from(
-          new Set(templates.map((s) => s.category).filter(Boolean))
-        ).sort() as string[];
-        setCategories(uniqueCategories);
-      } catch (err) {
-        console.error("[SkillsTab] Failed to load templates:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadTemplates();
   }, []);
+
+  // Reload when developer mode changes
+  useEffect(() => {
+    loadTemplates(developerMode);
+  }, [developerMode]);
 
   // Load deployed skills when project path changes
   useEffect(() => {
@@ -63,6 +74,24 @@ export function SkillsTab() {
       console.error("[SkillsTab] Failed to load deployed skills:", err);
       setDeployedSkills([]);
     }
+  };
+
+  // Handle refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await loadTemplates(developerMode);
+    } catch (err) {
+      console.error("[SkillsTab] Failed to refresh skills:", err);
+      alert(`Failed to refresh skills: ${err}`);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Toggle developer mode
+  const handleToggleDeveloperMode = () => {
+    setDeveloperMode(!developerMode);
   };
 
   // Filter by category first
@@ -155,15 +184,48 @@ export function SkillsTab() {
         <div>
           <h2 className="text-2xl font-bold">Skill Library</h2>
           <p className="text-muted-foreground mt-1">
-            {library.length} skill{library.length !== 1 ? 's' : ''} loaded from templates
+            {library.length} skill{library.length !== 1 ? 's' : ''} loaded from {developerMode ? 'dev templates' : 'templates'}
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            variant="ghost"
+            size="sm"
+          >
+            {isRefreshing ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+          </Button>
+          {developerMode && (
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              variant="default"
+              size="sm"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create New
+            </Button>
+          )}
+          <Button
+            onClick={handleToggleDeveloperMode}
+            variant={developerMode ? "default" : "outline"}
+            size="sm"
+          >
+            <Code className="mr-2 h-4 w-4" />
+            {developerMode ? "Dev Mode (ON)" : "Dev Mode"}
+          </Button>
         </div>
       </div>
 
-      {/* Categories and Search on same row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Categories - Left */}
-        <Card>
+      {/* Categories and Search on same row - Hidden in Dev Mode */}
+      {!developerMode && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Categories - Left */}
+          <Card>
           <CardHeader>
             <CardTitle>Categories</CardTitle>
             <CardDescription>
@@ -244,10 +306,11 @@ export function SkillsTab() {
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Skills Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredSkills.map((skill) => {
+        {(developerMode ? library : filteredSkills).map((skill) => {
           const deployed = isSkillDeployed(skill.id);
           return (
             <Card
@@ -315,6 +378,16 @@ export function SkillsTab() {
           projectPath={projectPath}
           onClose={() => setSelectedSkill(null)}
           onAddSkill={handleAddSkill}
+          devMode={developerMode}
+          onRefresh={loadTemplates}
+        />
+      )}
+
+      {/* Create Skill Modal */}
+      {showCreateModal && (
+        <CreateSkillModal
+          onClose={() => setShowCreateModal(false)}
+          onRefresh={loadTemplates}
         />
       )}
 
@@ -322,8 +395,10 @@ export function SkillsTab() {
         <Card>
           <CardContent className="flex items-center justify-center py-12">
             <div className="text-center">
+              <FolderPlus className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Skills Found</h3>
               <p className="text-muted-foreground">
-                No skills found matching your criteria
+                No skills in this category yet
               </p>
             </div>
           </CardContent>

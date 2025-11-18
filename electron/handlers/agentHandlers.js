@@ -8,6 +8,7 @@ const __dirname = path.dirname(__filename);
 
 // Load agent library from Git repository or fallback to local agents_template
 let agentLibrary = null;
+let agentLibraryDev = null;
 
 // Get path to agent repository
 function getAgentRepoPath() {
@@ -16,9 +17,10 @@ function getAgentRepoPath() {
 }
 
 // Fallback to local agents_template if Git repo doesn't exist
-function getFallbackAgentPath() {
+function getFallbackAgentPath(devMode = false) {
   // __dirname is electron/handlers/, so go up two levels to project root
-  return path.join(__dirname, '..', '..', 'agents_template');
+  const dirName = devMode ? 'agents_dev' : 'agents_template';
+  return path.join(__dirname, '..', '..', dirName);
 }
 
 function parseFrontmatter(content) {
@@ -102,23 +104,31 @@ async function scanAgentDirectory(dir, category = null, baseDir = null) {
   return agents;
 }
 
-async function loadAgentLibrary(forceReload = false) {
-  if (!agentLibrary || forceReload) {
-    // Try to load from Git repository first
-    const gitRepoPath = getAgentRepoPath();
-    const fallbackPath = getFallbackAgentPath();
+async function loadAgentLibrary(forceReload = false, devMode = false) {
+  // Use separate cache for dev mode vs normal mode
+  const currentCache = devMode ? agentLibraryDev : agentLibrary;
+
+  if (!currentCache || forceReload) {
+    // In dev mode, only use local _dev directory (no Git repo)
+    const fallbackPath = getFallbackAgentPath(devMode);
 
     let templatesDir = fallbackPath;
-    let source = 'local';
+    let source = devMode ? 'dev' : 'local';
 
-    try {
-      // Check if Git repo exists
-      await fs.access(gitRepoPath);
-      templatesDir = gitRepoPath;
-      source = 'git';
-      console.log('[AgentHandlers] Loading agents from Git repository:', gitRepoPath);
-    } catch {
-      console.log('[AgentHandlers] Git repository not found, using local fallback:', fallbackPath);
+    // Only try Git repo if NOT in dev mode
+    if (!devMode) {
+      const gitRepoPath = getAgentRepoPath();
+      try {
+        // Check if Git repo exists
+        await fs.access(gitRepoPath);
+        templatesDir = gitRepoPath;
+        source = 'git';
+        console.log('[AgentHandlers] Loading agents from Git repository:', gitRepoPath);
+      } catch {
+        console.log('[AgentHandlers] Git repository not found, using local fallback:', fallbackPath);
+      }
+    } else {
+      console.log('[AgentHandlers] Developer mode: Loading agents from:', fallbackPath);
     }
 
     const agents = await scanAgentDirectory(templatesDir);
@@ -127,24 +137,35 @@ async function loadAgentLibrary(forceReload = false) {
     const categoriesSet = new Set(agents.map((agent) => agent.category));
     const categories = Array.from(categoriesSet).sort();
 
-    agentLibrary = {
+    const libraryData = {
       version: '2.0.0',
       agents,
       categories,
-      source, // 'git' or 'local'
+      source, // 'git', 'local', or 'dev'
       loadedFrom: templatesDir,
     };
+
+    // Save to appropriate cache
+    if (devMode) {
+      agentLibraryDev = libraryData;
+    } else {
+      agentLibrary = libraryData;
+    }
 
     console.log(`[AgentHandlers] Loaded ${agents.length} agents from ${source} (${templatesDir})`);
   }
 
-  return agentLibrary;
+  // Return the appropriate cache
+  return devMode ? agentLibraryDev : agentLibrary;
 }
 
 export function registerAgentHandlers(ipcMain) {
   // Get full agent library
-  ipcMain.handle('agent:getLibrary', async () => {
-    const library = await loadAgentLibrary();
+  ipcMain.handle('agent:getLibrary', async (event, { devMode = false } = {}) => {
+    console.log('[agent:getLibrary] Called with devMode:', devMode);
+    // Always force reload to ensure we get the correct directory
+    const library = await loadAgentLibrary(true, devMode);
+    console.log('[agent:getLibrary] Returning library from:', library.loadedFrom, 'source:', library.source);
     return {
       version: library.version,
       agents: library.agents,
@@ -243,14 +264,118 @@ model: ${agent.model}
   });
 
   // Reload agent library (hot reload)
-  ipcMain.handle('agent:reload', async () => {
+  ipcMain.handle('agent:reload', async (event, { devMode = false } = {}) => {
     console.log('[AgentHandlers] Reloading agent library...');
-    const library = await loadAgentLibrary(true); // Force reload
+    const library = await loadAgentLibrary(true, devMode); // Force reload
     return {
       success: true,
       agentCount: library.agents.length,
       source: library.source,
       loadedFrom: library.loadedFrom,
+    };
+  });
+
+  // ========== DEVELOPER MODE CRUD OPERATIONS ==========
+
+  // Create new agent template in agents_dev/
+  ipcMain.handle('agent:createTemplate', async (event, { agent }) => {
+    const devPath = getFallbackAgentPath(true); // agents_dev/
+
+    // Generate filename from agent name (sanitize)
+    const fileName = agent.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.md';
+    const categoryPath = path.join(devPath, agent.category || 'general');
+    const fullPath = path.join(categoryPath, fileName);
+
+    // Build frontmatter
+    const frontmatter = `---
+name: ${agent.name}
+description: ${agent.description || ''}
+tags: [${Array.isArray(agent.tags) ? agent.tags.join(', ') : ''}]
+category: ${agent.category || 'general'}
+tools: ${JSON.stringify(agent.tools || '*')}
+model: ${agent.model || 'sonnet'}
+suggested-for: [${Array.isArray(agent.suggestedFor) ? agent.suggestedFor.join(', ') : ''}]
+---
+
+${agent.template || ''}`;
+
+    // Ensure directory exists
+    await fs.mkdir(categoryPath, { recursive: true });
+
+    // Write file
+    await fs.writeFile(fullPath, frontmatter, 'utf-8');
+
+    console.log(`[AgentHandlers] Created template: ${fullPath}`);
+
+    return {
+      success: true,
+      path: fullPath,
+      message: `Agent template created: ${fileName}`,
+    };
+  });
+
+  // Update existing agent template in agents_dev/
+  ipcMain.handle('agent:updateTemplate', async (event, { agentId, agent }) => {
+    const devPath = getFallbackAgentPath(true); // agents_dev/
+
+    // Find the original file by scanning for the ID
+    const agents = await scanAgentDirectory(devPath);
+    const originalAgent = agents.find((a) => a.id === agentId);
+
+    if (!originalAgent) {
+      throw new Error(`Agent template not found: ${agentId}`);
+    }
+
+    // Reconstruct the file path from the ID
+    const filePath = path.join(devPath, agentId.replace(/-/g, '/') + '.md');
+
+    // Build updated frontmatter
+    const frontmatter = `---
+name: ${agent.name}
+description: ${agent.description || ''}
+tags: [${Array.isArray(agent.tags) ? agent.tags.join(', ') : ''}]
+category: ${agent.category || 'general'}
+tools: ${JSON.stringify(agent.tools || '*')}
+model: ${agent.model || 'sonnet'}
+suggested-for: [${Array.isArray(agent.suggestedFor) ? agent.suggestedFor.join(', ') : ''}]
+---
+
+${agent.template || ''}`;
+
+    // Write file
+    await fs.writeFile(filePath, frontmatter, 'utf-8');
+
+    console.log(`[AgentHandlers] Updated template: ${filePath}`);
+
+    return {
+      success: true,
+      path: filePath,
+      message: `Agent template updated: ${agent.name}`,
+    };
+  });
+
+  // Delete agent template from agents_dev/
+  ipcMain.handle('agent:deleteTemplate', async (event, { agentId }) => {
+    const devPath = getFallbackAgentPath(true); // agents_dev/
+
+    // Reconstruct the file path from the ID
+    const filePath = path.join(devPath, agentId.replace(/-/g, '/') + '.md');
+
+    // Check if file exists
+    try {
+      await fs.access(filePath);
+    } catch {
+      throw new Error(`Agent template not found: ${agentId}`);
+    }
+
+    // Delete file
+    await fs.unlink(filePath);
+
+    console.log(`[AgentHandlers] Deleted template: ${filePath}`);
+
+    return {
+      success: true,
+      message: `Agent template deleted: ${agentId}`,
     };
   });
 }

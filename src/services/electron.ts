@@ -262,8 +262,8 @@ export interface AgentLibraryResponse {
   loadedFrom?: string; // Path to loaded directory
 }
 
-export async function getAgentLibrary(): Promise<AgentLibraryResponse> {
-  return window.electronAPI.getAgentLibrary();
+export async function getAgentLibrary(devMode?: boolean): Promise<AgentLibraryResponse> {
+  return window.electronAPI.getAgentLibrary(devMode);
 }
 
 export async function getAgentsByCategory(
@@ -298,6 +298,30 @@ export async function getSuggestedAgents(
   technologies: string[]
 ): Promise<Agent[]> {
   return window.electronAPI.getSuggestedAgents(technologies);
+}
+
+// Developer Mode - Agent Template CRUD
+export async function createAgentTemplate(agent: Partial<Agent>): Promise<{
+  success: boolean;
+  path: string;
+  message: string;
+}> {
+  return window.electronAPI.createAgentTemplate(agent);
+}
+
+export async function updateAgentTemplate(agentId: string, agent: Partial<Agent>): Promise<{
+  success: boolean;
+  path: string;
+  message: string;
+}> {
+  return window.electronAPI.updateAgentTemplate(agentId, agent);
+}
+
+export async function deleteAgentTemplate(agentId: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  return window.electronAPI.deleteAgentTemplate(agentId);
 }
 
 // ============================================================================
@@ -451,8 +475,33 @@ export async function ensureSkillsDir(projectPath: string): Promise<string> {
   return window.electronAPI.ensureSkillsDir(projectPath);
 }
 
-export async function loadTemplateSkills(): Promise<Skill[]> {
-  return window.electronAPI.loadTemplateSkills();
+export async function loadTemplateSkills(devMode?: boolean): Promise<Skill[]> {
+  return window.electronAPI.loadTemplateSkills(devMode);
+}
+
+// Developer Mode - Skill Template CRUD
+export async function createSkillTemplate(skill: Partial<Skill>): Promise<{
+  success: boolean;
+  path: string;
+  skillId: string;
+  message: string;
+}> {
+  return window.electronAPI.createSkillTemplate(skill);
+}
+
+export async function updateSkillTemplate(skillId: string, skill: Partial<Skill>): Promise<{
+  success: boolean;
+  path: string;
+  message: string;
+}> {
+  return window.electronAPI.updateSkillTemplate(skillId, skill);
+}
+
+export async function deleteSkillTemplate(skillId: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  return window.electronAPI.deleteSkillTemplate(skillId);
 }
 
 // ============================================================================
@@ -512,16 +561,39 @@ export async function deleteAgentRepository() {
   return window.electronAPI.deleteAgentRepository();
 }
 
-export async function reloadAgents() {
-  return window.electronAPI.reloadAgents();
+export async function reloadAgents(devMode?: boolean) {
+  return window.electronAPI.reloadAgents(devMode);
 }
 
 // ============================================================================
 // Hook Commands
 // ============================================================================
 
-export async function loadTemplateHooks(): Promise<Hook[]> {
-  return window.electronAPI.loadTemplateHooks();
+export async function loadTemplateHooks(devMode?: boolean): Promise<Hook[]> {
+  return window.electronAPI.loadTemplateHooks(devMode);
+}
+
+// Developer Mode - Hook Template CRUD
+export async function createHookTemplate(hook: Partial<Hook>): Promise<{
+  success: boolean;
+  hookId: string;
+  message: string;
+}> {
+  return window.electronAPI.createHookTemplate(hook);
+}
+
+export async function updateHookTemplate(hookId: string, hook: Partial<Hook>): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  return window.electronAPI.updateHookTemplate(hookId, hook);
+}
+
+export async function deleteHookTemplate(hookId: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  return window.electronAPI.deleteHookTemplate(hookId);
 }
 
 export async function listHooks(projectPath: string, settingsFileName?: string): Promise<Array<{

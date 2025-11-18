@@ -1,8 +1,11 @@
-import { X, Copy, Check } from "lucide-react";
+import { X, Copy, Check, Trash2, Edit, Save } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import type { Hook, HookEvent } from "@/types/hook";
+import * as electron from "@/services/electron";
 
 // Helper function to get event badge colors
 function getEventBadgeClass(event: HookEvent): string {
@@ -28,6 +31,8 @@ interface HookDetailModalProps {
   onClose: () => void;
   onDeploy: (hook: Hook) => void;
   onRemove: (hook: Hook) => void;
+  devMode?: boolean;
+  onRefresh?: () => void;
 }
 
 export function HookDetailModal({
@@ -38,12 +43,28 @@ export function HookDetailModal({
   onClose,
   onDeploy,
   onRemove,
+  devMode = false,
+  onRefresh
 }: HookDetailModalProps) {
   const [copied, setCopied] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Editable fields
+  const [editName, setEditName] = useState(hook.name);
+  const [editDescription, setEditDescription] = useState(hook.description);
+  const [editCategory, setEditCategory] = useState(hook.category || "");
+  const [editEvent, setEditEvent] = useState(hook.event);
+  const [editMatcher, setEditMatcher] = useState(hook.matcher);
+  const [editCommand, setEditCommand] = useState(hook.command);
+  const [editTags, setEditTags] = useState(hook.tags?.join(", ") || "");
+  const [editRequiresTools, setEditRequiresTools] = useState(hook.requiresTools?.join(", ") || "");
+  const [editSuggestedFor, setEditSuggestedFor] = useState(hook.suggestedFor?.join(", ") || "");
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleCopyCommand = () => {
-    if (hook.command) {
-      navigator.clipboard.writeText(hook.command);
+    const commandText = isEditing ? editCommand : hook.command;
+    if (commandText) {
+      navigator.clipboard.writeText(commandText);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -52,6 +73,68 @@ export function HookDetailModal({
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       onClose();
+    }
+  };
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    // Reset to original values
+    setEditName(hook.name);
+    setEditDescription(hook.description);
+    setEditCategory(hook.category || "");
+    setEditEvent(hook.event);
+    setEditMatcher(hook.matcher);
+    setEditCommand(hook.command);
+    setEditTags(hook.tags?.join(", ") || "");
+    setEditRequiresTools(hook.requiresTools?.join(", ") || "");
+    setEditSuggestedFor(hook.suggestedFor?.join(", ") || "");
+    setIsEditing(false);
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const updatedHook: Partial<Hook> = {
+        name: editName,
+        description: editDescription,
+        category: editCategory || undefined,
+        event: editEvent,
+        matcher: editMatcher,
+        command: editCommand,
+        tags: editTags ? editTags.split(",").map(t => t.trim()).filter(Boolean) : [],
+        requiresTools: editRequiresTools ? editRequiresTools.split(",").map(t => t.trim()).filter(Boolean) : undefined,
+        suggestedFor: editSuggestedFor ? editSuggestedFor.split(",").map(t => t.trim()).filter(Boolean) : undefined,
+      };
+
+      await electron.updateHookTemplate(hook.id, updatedHook);
+      alert(`Hook "${editName}" updated successfully!`);
+      setIsEditing(false);
+      if (onRefresh) onRefresh();
+      onClose();
+    } catch (err) {
+      console.error("Failed to update hook:", err);
+      alert(`Failed to update hook: ${err}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm(`Are you sure you want to delete the hook template "${hook.name}"? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await electron.deleteHookTemplate(hook.id);
+      alert(`Hook template "${hook.name}" deleted successfully!`);
+      if (onRefresh) onRefresh();
+      onClose();
+    } catch (err) {
+      console.error("Failed to delete hook:", err);
+      alert(`Failed to delete hook: ${err}`);
     }
   };
 
@@ -64,8 +147,28 @@ export function HookDetailModal({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">
           <div className="flex-1">
-            <h2 className="text-2xl font-bold">{hook.name}</h2>
-            <p className="text-muted-foreground mt-1">{hook.description}</p>
+            {isEditing ? (
+              <div className="space-y-2">
+                <Input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="text-2xl font-bold"
+                  placeholder="Hook name"
+                />
+                <Textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="text-muted-foreground"
+                  placeholder="Hook description"
+                  rows={2}
+                />
+              </div>
+            ) : (
+              <>
+                <h2 className="text-2xl font-bold">{hook.name}</h2>
+                <p className="text-muted-foreground mt-1">{hook.description}</p>
+              </>
+            )}
           </div>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-5 w-5" />
@@ -76,16 +179,24 @@ export function HookDetailModal({
         <div className="flex-1 overflow-auto p-6 space-y-6">
           {/* Metadata */}
           <div className="grid grid-cols-2 gap-4">
-            {hook.category && (
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">
-                  Category
-                </label>
-                <div className="mt-1">
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">
+                Category
+              </label>
+              <div className="mt-1">
+                {isEditing ? (
+                  <Input
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    placeholder="Category (optional)"
+                  />
+                ) : hook.category ? (
                   <Badge variant="outline">{hook.category}</Badge>
-                </div>
+                ) : (
+                  <span className="text-sm text-muted-foreground">No category</span>
+                )}
               </div>
-            )}
+            </div>
             <div>
               <label className="text-sm font-medium text-muted-foreground">
                 Hook ID
@@ -101,9 +212,27 @@ export function HookDetailModal({
                 Event
               </label>
               <div className="mt-1">
-                <Badge className={`border ${getEventBadgeClass(hook.event)}`}>
-                  {hook.event}
-                </Badge>
+                {isEditing ? (
+                  <select
+                    value={editEvent}
+                    onChange={(e) => setEditEvent(e.target.value as HookEvent)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="PreToolUse">PreToolUse</option>
+                    <option value="PostToolUse">PostToolUse</option>
+                    <option value="UserPromptSubmit">UserPromptSubmit</option>
+                    <option value="Notification">Notification</option>
+                    <option value="Stop">Stop</option>
+                    <option value="SubagentStop">SubagentStop</option>
+                    <option value="PreCompact">PreCompact</option>
+                    <option value="SessionStart">SessionStart</option>
+                    <option value="SessionEnd">SessionEnd</option>
+                  </select>
+                ) : (
+                  <Badge className={`border ${getEventBadgeClass(hook.event)}`}>
+                    {hook.event}
+                  </Badge>
+                )}
               </div>
             </div>
             <div>
@@ -111,77 +240,115 @@ export function HookDetailModal({
                 Matcher
               </label>
               <div className="mt-1">
-                <code className="text-sm bg-muted px-2 py-1 rounded">
-                  {hook.matcher}
-                </code>
+                {isEditing ? (
+                  <Input
+                    value={editMatcher}
+                    onChange={(e) => setEditMatcher(e.target.value)}
+                    placeholder="Matcher pattern (e.g., *)"
+                  />
+                ) : (
+                  <code className="text-sm bg-muted px-2 py-1 rounded">
+                    {hook.matcher}
+                  </code>
+                )}
               </div>
             </div>
           </div>
 
           {/* Tags */}
-          {hook.tags && hook.tags.length > 0 && (
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">
-                Tags
-              </label>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {hook.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-2 py-1 bg-muted text-xs rounded"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
+          <div>
+            <label className="text-sm font-medium text-muted-foreground">
+              Tags
+            </label>
+            <div className="mt-2">
+              {isEditing ? (
+                <Input
+                  value={editTags}
+                  onChange={(e) => setEditTags(e.target.value)}
+                  placeholder="Comma-separated tags (optional)"
+                />
+              ) : hook.tags && hook.tags.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {hook.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-2 py-1 bg-muted text-xs rounded"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-sm text-muted-foreground">No tags</span>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Required Tools */}
-          {hook.requiresTools && hook.requiresTools.length > 0 && (
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">
-                Required Tools
-              </label>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {hook.requiresTools.map((tool) => (
-                  <span
-                    key={tool}
-                    className="px-2 py-1 bg-amber-500/20 text-amber-700 dark:text-amber-300 text-xs rounded"
-                  >
-                    {tool}
-                  </span>
-                ))}
-              </div>
+          <div>
+            <label className="text-sm font-medium text-muted-foreground">
+              Required Tools
+            </label>
+            <div className="mt-2">
+              {isEditing ? (
+                <Input
+                  value={editRequiresTools}
+                  onChange={(e) => setEditRequiresTools(e.target.value)}
+                  placeholder="Comma-separated tool names (optional)"
+                />
+              ) : hook.requiresTools && hook.requiresTools.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {hook.requiresTools.map((tool) => (
+                    <span
+                      key={tool}
+                      className="px-2 py-1 bg-amber-500/20 text-amber-700 dark:text-amber-300 text-xs rounded"
+                    >
+                      {tool}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-sm text-muted-foreground">No required tools</span>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Suggested For */}
-          {hook.suggestedFor && hook.suggestedFor.length > 0 && (
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">
-                Suggested For
-              </label>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {hook.suggestedFor.map((tech) => (
-                  <span
-                    key={tech}
-                    className="px-2 py-1 bg-blue-500/20 text-blue-700 dark:text-blue-300 text-xs rounded"
-                  >
-                    {tech}
-                  </span>
-                ))}
-              </div>
+          <div>
+            <label className="text-sm font-medium text-muted-foreground">
+              Suggested For
+            </label>
+            <div className="mt-2">
+              {isEditing ? (
+                <Input
+                  value={editSuggestedFor}
+                  onChange={(e) => setEditSuggestedFor(e.target.value)}
+                  placeholder="Comma-separated technologies (optional)"
+                />
+              ) : hook.suggestedFor && hook.suggestedFor.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {hook.suggestedFor.map((tech) => (
+                    <span
+                      key={tech}
+                      className="px-2 py-1 bg-blue-500/20 text-blue-700 dark:text-blue-300 text-xs rounded"
+                    >
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-sm text-muted-foreground">No suggestions</span>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Command */}
-          {hook.command && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium text-muted-foreground">
-                  Shell Command
-                </label>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-muted-foreground">
+                Shell Command
+              </label>
+              {!isEditing && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -199,14 +366,23 @@ export function HookDetailModal({
                     </>
                   )}
                 </Button>
-              </div>
+              )}
+            </div>
+            {isEditing ? (
+              <Textarea
+                value={editCommand}
+                onChange={(e) => setEditCommand(e.target.value)}
+                className="font-mono text-sm min-h-32"
+                placeholder="Shell command to execute..."
+              />
+            ) : (
               <div className="bg-muted p-4 rounded-lg overflow-auto">
                 <pre className="text-sm whitespace-pre-wrap font-mono">
-                  {hook.command}
+                  {hook.command || "No command"}
                 </pre>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Configuration Preview */}
           <div>
@@ -248,31 +424,73 @@ export function HookDetailModal({
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-2 p-6 border-t border-border">
-          <div className="flex-1">
-            {!projectPath && (
+          <div className="flex items-center gap-2">
+            {/* Dev Mode: Delete button for templates */}
+            {devMode && !isDeployed && !isEditing && (
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Template
+              </Button>
+            )}
+            {/* Deployed hooks: Remove button */}
+            {isDeployed && (
+              <Button
+                variant="destructive"
+                onClick={() => onRemove(hook)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Remove Hook
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {!projectPath && !devMode && !isEditing && (
               <p className="text-xs text-muted-foreground">
                 Select a project first
               </p>
             )}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>
-              Close
-            </Button>
-            {isDeployed ? (
-              <Button
-                onClick={() => onRemove(hook)}
-                variant="destructive"
-              >
-                Remove from project
-              </Button>
+            {isEditing ? (
+              <>
+                <Button variant="outline" onClick={handleCancelEdit}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSave} disabled={isSaving}>
+                  {isSaving ? (
+                    <>
+                      <Save className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
+              </>
             ) : (
-              <Button
-                onClick={() => onDeploy(hook)}
-                disabled={!projectPath}
-              >
-                Deploy this hook
-              </Button>
+              <>
+                {devMode && !isDeployed && (
+                  <Button variant="outline" onClick={handleEdit}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+                <Button variant="outline" onClick={onClose}>
+                  Close
+                </Button>
+                {!isDeployed && !devMode && (
+                  <Button
+                    onClick={() => onDeploy(hook)}
+                    disabled={!projectPath}
+                  >
+                    Deploy this hook
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </div>

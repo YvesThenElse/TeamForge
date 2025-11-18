@@ -200,13 +200,14 @@ export function registerSkillHandlers(ipcMain) {
   });
 
   // Load template skills from skills_template directory
-  ipcMain.handle('skill:loadTemplates', async () => {
+  ipcMain.handle('skill:loadTemplates', async (event, { devMode = false } = {}) => {
     try {
       // Go up from handlers directory to project root
       const projectRoot = path.join(__dirname, '..', '..');
-      const templatesDir = path.join(projectRoot, 'skills_template');
+      const dirName = devMode ? 'skills_dev' : 'skills_template';
+      const templatesDir = path.join(projectRoot, dirName);
 
-      console.log('[skill:loadTemplates] Loading from:', templatesDir);
+      console.log(`[skill:loadTemplates] Loading from ${devMode ? '(dev mode)' : ''}:`, templatesDir);
 
       // Check if directory exists
       try {
@@ -254,6 +255,126 @@ export function registerSkillHandlers(ipcMain) {
     } catch (err) {
       console.error('[skill:loadTemplates] Failed to load templates:', err);
       return [];
+    }
+  });
+
+  // ========== DEVELOPER MODE CRUD OPERATIONS ==========
+
+  // Create new skill template in skills_dev/
+  ipcMain.handle('skill:createTemplate', async (event, { skill }) => {
+    try {
+      const projectRoot = path.join(__dirname, '..', '..');
+      const devDir = path.join(projectRoot, 'skills_dev');
+
+      // Generate skill ID from name (sanitize)
+      const skillId = skill.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const skillPath = path.join(devDir, skillId);
+      const skillFilePath = path.join(skillPath, 'SKILL.md');
+
+      // Check if skill already exists
+      try {
+        await fs.access(skillPath);
+        throw new Error(`Skill already exists: ${skillId}`);
+      } catch (err) {
+        // Doesn't exist, continue
+        if (err.message.includes('already exists')) throw err;
+      }
+
+      // Build frontmatter
+      const frontmatter = {
+        name: skill.name,
+        description: skill.description || '',
+        category: skill.category || 'General',
+        tags: skill.tags || [],
+        'allowed-tools': skill.allowedTools || null,
+      };
+
+      // Create skill directory and file
+      await fs.mkdir(skillPath, { recursive: true });
+      const content = formatSkillFile(frontmatter, skill.instructions || '');
+      await fs.writeFile(skillFilePath, content, 'utf-8');
+
+      console.log(`[SkillHandlers] Created template: ${skillFilePath}`);
+
+      return {
+        success: true,
+        path: skillFilePath,
+        skillId,
+        message: `Skill template created: ${skillId}`,
+      };
+    } catch (err) {
+      console.error('[skill:createTemplate] Failed:', err);
+      throw err;
+    }
+  });
+
+  // Update existing skill template in skills_dev/
+  ipcMain.handle('skill:updateTemplate', async (event, { skillId, skill }) => {
+    try {
+      const projectRoot = path.join(__dirname, '..', '..');
+      const devDir = path.join(projectRoot, 'skills_dev');
+      const skillPath = path.join(devDir, skillId);
+      const skillFilePath = path.join(skillPath, 'SKILL.md');
+
+      // Check if skill exists
+      try {
+        await fs.access(skillPath);
+      } catch {
+        throw new Error(`Skill template not found: ${skillId}`);
+      }
+
+      // Build updated frontmatter
+      const frontmatter = {
+        name: skill.name,
+        description: skill.description || '',
+        category: skill.category || 'General',
+        tags: skill.tags || [],
+        'allowed-tools': skill.allowedTools || null,
+      };
+
+      // Update file
+      const content = formatSkillFile(frontmatter, skill.instructions || '');
+      await fs.writeFile(skillFilePath, content, 'utf-8');
+
+      console.log(`[SkillHandlers] Updated template: ${skillFilePath}`);
+
+      return {
+        success: true,
+        path: skillFilePath,
+        message: `Skill template updated: ${skill.name}`,
+      };
+    } catch (err) {
+      console.error('[skill:updateTemplate] Failed:', err);
+      throw err;
+    }
+  });
+
+  // Delete skill template from skills_dev/
+  ipcMain.handle('skill:deleteTemplate', async (event, { skillId }) => {
+    try {
+      const projectRoot = path.join(__dirname, '..', '..');
+      const devDir = path.join(projectRoot, 'skills_dev');
+      const skillPath = path.join(devDir, skillId);
+
+      // Check if skill exists
+      try {
+        await fs.access(skillPath);
+      } catch {
+        throw new Error(`Skill template not found: ${skillId}`);
+      }
+
+      // Delete skill directory
+      await fs.rm(skillPath, { recursive: true, force: true });
+
+      console.log(`[SkillHandlers] Deleted template: ${skillPath}`);
+
+      return {
+        success: true,
+        message: `Skill template deleted: ${skillId}`,
+      };
+    } catch (err) {
+      console.error('[skill:deleteTemplate] Failed:', err);
+      throw err;
     }
   });
 }

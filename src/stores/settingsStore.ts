@@ -17,6 +17,7 @@ interface SettingsState {
   theme: "light" | "dark" | "system";
   confirmDeploy: boolean; // Confirm before deploying agents
   claudeSettingsFile: "settings.json" | "settings.local.json"; // Which file to use for Claude settings
+  developerMode: boolean; // Enable developer mode for template editing
 
   // Actions
   setAgentRepositoryUrl: (url: string) => void;
@@ -29,6 +30,7 @@ interface SettingsState {
   setTheme: (theme: "light" | "dark" | "system") => void;
   setConfirmDeploy: (confirm: boolean) => void;
   setClaudeSettingsFile: (file: "settings.json" | "settings.local.json") => void;
+  setDeveloperMode: (enabled: boolean) => void;
   resetSettings: () => void;
 }
 
@@ -55,6 +57,7 @@ export const useSettingsStore = create<SettingsState>()(
       theme: "system",
       confirmDeploy: true,
       claudeSettingsFile: "settings.local.json",
+      developerMode: false,
 
       setAgentRepositoryUrl: (url) => set({ agentRepositoryUrl: url }),
       setAgentRepositoryBranch: (branch) => set({ agentRepositoryBranch: branch }),
@@ -66,6 +69,7 @@ export const useSettingsStore = create<SettingsState>()(
       setTheme: (theme) => set({ theme }),
       setConfirmDeploy: (confirm) => set({ confirmDeploy: confirm }),
       setClaudeSettingsFile: (file) => set({ claudeSettingsFile: file }),
+      setDeveloperMode: (enabled) => set({ developerMode: enabled }),
 
       resetSettings: () =>
         set({
@@ -79,6 +83,7 @@ export const useSettingsStore = create<SettingsState>()(
           theme: "system",
           confirmDeploy: true,
           claudeSettingsFile: "settings.local.json",
+          developerMode: false,
         }),
     }),
     {

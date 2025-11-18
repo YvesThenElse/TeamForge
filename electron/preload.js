@@ -18,7 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   analyzeProject: (path) => ipcRenderer.invoke('project:analyze', { path }),
 
   // Agent commands
-  getAgentLibrary: () => ipcRenderer.invoke('agent:getLibrary'),
+  getAgentLibrary: (devMode) => ipcRenderer.invoke('agent:getLibrary', { devMode }),
   getAgentsByCategory: (category) =>
     ipcRenderer.invoke('agent:getByCategory', { category }),
   searchAgents: (keyword) => ipcRenderer.invoke('agent:search', { keyword }),
@@ -29,6 +29,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('agent:save', { agentContent, filePath }),
   getSuggestedAgents: (technologies) =>
     ipcRenderer.invoke('agent:getSuggested', { technologies }),
+  // Developer mode CRUD
+  createAgentTemplate: (agent) =>
+    ipcRenderer.invoke('agent:createTemplate', { agent }),
+  updateAgentTemplate: (agentId, agent) =>
+    ipcRenderer.invoke('agent:updateTemplate', { agentId, agent }),
+  deleteAgentTemplate: (agentId) =>
+    ipcRenderer.invoke('agent:deleteTemplate', { agentId }),
 
   // Config commands
   loadTeamforgeConfig: (projectPath) =>
@@ -97,8 +104,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('skill:dirExists', { projectPath }),
   ensureSkillsDir: (projectPath) =>
     ipcRenderer.invoke('skill:ensureDir', { projectPath }),
-  loadTemplateSkills: () =>
-    ipcRenderer.invoke('skill:loadTemplates'),
+  loadTemplateSkills: (devMode) =>
+    ipcRenderer.invoke('skill:loadTemplates', { devMode }),
+  // Developer mode CRUD
+  createSkillTemplate: (skill) =>
+    ipcRenderer.invoke('skill:createTemplate', { skill }),
+  updateSkillTemplate: (skillId, skill) =>
+    ipcRenderer.invoke('skill:updateTemplate', { skillId, skill }),
+  deleteSkillTemplate: (skillId) =>
+    ipcRenderer.invoke('skill:deleteTemplate', { skillId }),
 
   // Team commands
   listTeams: (projectPath) =>
@@ -121,12 +135,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('agentRepo:status'),
   deleteAgentRepository: () =>
     ipcRenderer.invoke('agentRepo:delete'),
-  reloadAgents: () =>
-    ipcRenderer.invoke('agent:reload'),
+  reloadAgents: (devMode) =>
+    ipcRenderer.invoke('agent:reload', { devMode }),
 
   // Hook commands
-  loadTemplateHooks: () =>
-    ipcRenderer.invoke('hook:loadTemplates'),
+  loadTemplateHooks: (devMode) =>
+    ipcRenderer.invoke('hook:loadTemplates', { devMode }),
   listHooks: (projectPath, settingsFileName) =>
     ipcRenderer.invoke('hook:list', { projectPath, settingsFileName }),
   deployHook: (projectPath, hook, settingsFileName) =>
@@ -137,6 +151,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('hook:dirExists', { projectPath }),
   ensureHooksDir: (projectPath) =>
     ipcRenderer.invoke('hook:ensureDir', { projectPath }),
+  // Developer mode CRUD
+  createHookTemplate: (hook) =>
+    ipcRenderer.invoke('hook:createTemplate', { hook }),
+  updateHookTemplate: (hookId, hook) =>
+    ipcRenderer.invoke('hook:updateTemplate', { hookId, hook }),
+  deleteHookTemplate: (hookId) =>
+    ipcRenderer.invoke('hook:deleteTemplate', { hookId }),
 
   // Claude Settings commands
   loadClaudeSettings: (projectPath, settingsFileName) =>

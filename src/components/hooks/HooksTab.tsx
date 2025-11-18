@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, Search, X, CheckCircle } from "lucide-react";
+import { Loader2, Search, X, CheckCircle, RefreshCw, Code, Plus, FolderPlus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -9,6 +9,7 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import type { Hook, HookEvent } from "@/types/hook";
 import * as electron from "@/services/electron";
 import { HookDetailModal } from "./HookDetailModal";
+import { CreateHookModal } from "./CreateHookModal";
 
 // Helper function to get event badge colors
 function getEventBadgeClass(event: HookEvent): string {
@@ -28,12 +29,14 @@ function getEventBadgeClass(event: HookEvent): string {
 
 export function HooksTab() {
   const { projectPath } = useProjectStore();
-  const { claudeSettingsFile } = useSettingsStore();
+  const { claudeSettingsFile, developerMode, setDeveloperMode } = useSettingsStore();
   const [library, setLibrary] = useState<Hook[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedHook, setSelectedHook] = useState<Hook | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [deployedHooks, setDeployedHooks] = useState<Array<{
     event: string;
@@ -42,30 +45,36 @@ export function HooksTab() {
     type: string;
   }>>([]);
 
-  // Load template hooks on mount
+  // Load template hooks
+  const loadTemplates = async (devMode = developerMode) => {
+    setLoading(true);
+    try {
+      console.log(`[HooksTab] Loading template hooks ${devMode ? '(dev mode)' : ''}...`);
+      const templates = await electron.loadTemplateHooks(devMode);
+      console.log("[HooksTab] Loaded templates:", templates);
+      setLibrary(templates);
+
+      // Extract unique categories
+      const uniqueCategories = Array.from(
+        new Set(templates.map((h) => h.category).filter(Boolean))
+      ).sort() as string[];
+      setCategories(uniqueCategories);
+    } catch (err) {
+      console.error("[HooksTab] Failed to load templates:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load on mount
   useEffect(() => {
-    const loadTemplates = async () => {
-      setLoading(true);
-      try {
-        console.log("[HooksTab] Loading template hooks...");
-        const templates = await electron.loadTemplateHooks();
-        console.log("[HooksTab] Loaded templates:", templates);
-        setLibrary(templates);
-
-        // Extract unique categories
-        const uniqueCategories = Array.from(
-          new Set(templates.map((h) => h.category).filter(Boolean))
-        ).sort() as string[];
-        setCategories(uniqueCategories);
-      } catch (err) {
-        console.error("[HooksTab] Failed to load templates:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadTemplates();
   }, []);
+
+  // Reload when developer mode changes
+  useEffect(() => {
+    loadTemplates(developerMode);
+  }, [developerMode]);
 
   // Load deployed hooks when project path changes
   useEffect(() => {
@@ -86,6 +95,24 @@ export function HooksTab() {
       console.error("[HooksTab] Failed to load deployed hooks:", err);
       setDeployedHooks([]);
     }
+  };
+
+  // Handle refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await loadTemplates(developerMode);
+    } catch (err) {
+      console.error("[HooksTab] Failed to refresh hooks:", err);
+      alert(`Failed to refresh hooks: ${err}`);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Toggle developer mode
+  const handleToggleDeveloperMode = () => {
+    setDeveloperMode(!developerMode);
   };
 
   // Filter by category first
@@ -175,18 +202,51 @@ export function HooksTab() {
         <div>
           <h2 className="text-2xl font-bold">Hooks Library</h2>
           <p className="text-muted-foreground mt-1">
-            {library.length} hook{library.length !== 1 ? 's' : ''} loaded from templates
+            {library.length} hook{library.length !== 1 ? 's' : ''} loaded from {developerMode ? 'dev templates' : 'templates'}
           </p>
           <p className="text-sm text-muted-foreground mt-1">
             Hooks run shell commands at lifecycle events (PreToolUse, PostToolUse, SessionStart, etc.)
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            variant="ghost"
+            size="sm"
+          >
+            {isRefreshing ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+          </Button>
+          {developerMode && (
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              variant="default"
+              size="sm"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create New
+            </Button>
+          )}
+          <Button
+            onClick={handleToggleDeveloperMode}
+            variant={developerMode ? "default" : "outline"}
+            size="sm"
+          >
+            <Code className="mr-2 h-4 w-4" />
+            {developerMode ? "Dev Mode (ON)" : "Dev Mode"}
+          </Button>
+        </div>
       </div>
 
-      {/* Categories and Search on same row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Categories - Left */}
-        <Card>
+      {/* Categories and Search on same row - Hidden in Dev Mode */}
+      {!developerMode && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Categories - Left */}
+          <Card>
           <CardHeader>
             <CardTitle>Categories</CardTitle>
             <CardDescription>
@@ -267,10 +327,11 @@ export function HooksTab() {
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Hooks Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredHooks.map((hook) => {
+        {(developerMode ? library : filteredHooks).map((hook) => {
           const deployed = isHookDeployed(hook);
           return (
             <Card
@@ -349,6 +410,16 @@ export function HooksTab() {
           onClose={() => setSelectedHook(null)}
           onDeploy={handleDeployHook}
           onRemove={handleRemoveHook}
+          devMode={developerMode}
+          onRefresh={loadTemplates}
+        />
+      )}
+
+      {/* Create Hook Modal */}
+      {showCreateModal && (
+        <CreateHookModal
+          onClose={() => setShowCreateModal(false)}
+          onRefresh={loadTemplates}
         />
       )}
 
@@ -356,8 +427,10 @@ export function HooksTab() {
         <Card>
           <CardContent className="flex items-center justify-center py-12">
             <div className="text-center">
+              <FolderPlus className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Hooks Found</h3>
               <p className="text-muted-foreground">
-                No hooks found matching your criteria
+                No hooks in this category yet
               </p>
             </div>
           </CardContent>
