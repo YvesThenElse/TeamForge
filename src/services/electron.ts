@@ -133,31 +133,33 @@ declare global {
 
       // Hook commands
       loadTemplateHooks: () => Promise<Hook[]>;
-      listHooks: (projectPath: string) => Promise<Array<{
+      listHooks: (projectPath: string, settingsFileName?: string) => Promise<Array<{
         event: string;
         matcher: string;
         command: string;
         type: string;
       }>>;
-      deployHook: (projectPath: string, hook: Hook) => Promise<string>;
+      deployHook: (projectPath: string, hook: Hook, settingsFileName?: string) => Promise<string>;
       removeHook: (
         projectPath: string,
         hookEvent: string,
         matcher: string,
-        command: string
+        command: string,
+        settingsFileName?: string
       ) => Promise<string>;
       hookDirExists: (projectPath: string) => Promise<boolean>;
       ensureHooksDir: (projectPath: string) => Promise<string>;
 
       // Claude Settings commands
-      loadClaudeSettings: (projectPath: string) => Promise<{
+      loadClaudeSettings: (projectPath: string, settingsFileName?: string) => Promise<{
         exists: boolean;
         path: string;
         settings: ClaudeSettings;
       }>;
       saveClaudeSettings: (
         projectPath: string,
-        settings: ClaudeSettings
+        settings: ClaudeSettings,
+        settingsFileName?: string
       ) => Promise<{
         success: boolean;
         path: string;
@@ -172,7 +174,7 @@ declare global {
         files: SettingsFile[];
         merged: ClaudeSettings;
       }>;
-      claudeSettingsExists: (projectPath: string) => Promise<boolean>;
+      claudeSettingsExists: (projectPath: string, settingsFileName?: string) => Promise<boolean>;
       ensureClaudeSettingsDir: (projectPath: string) => Promise<string>;
       validateClaudeSettings: (settings: ClaudeSettings) => Promise<{
         valid: boolean;
@@ -522,29 +524,31 @@ export async function loadTemplateHooks(): Promise<Hook[]> {
   return window.electronAPI.loadTemplateHooks();
 }
 
-export async function listHooks(projectPath: string): Promise<Array<{
+export async function listHooks(projectPath: string, settingsFileName?: string): Promise<Array<{
   event: string;
   matcher: string;
   command: string;
   type: string;
 }>> {
-  return window.electronAPI.listHooks(projectPath);
+  return window.electronAPI.listHooks(projectPath, settingsFileName);
 }
 
 export async function deployHook(
   projectPath: string,
-  hook: Hook
+  hook: Hook,
+  settingsFileName?: string
 ): Promise<string> {
-  return window.electronAPI.deployHook(projectPath, hook);
+  return window.electronAPI.deployHook(projectPath, hook, settingsFileName);
 }
 
 export async function removeHook(
   projectPath: string,
   hookEvent: string,
   matcher: string,
-  command: string
+  command: string,
+  settingsFileName?: string
 ): Promise<string> {
-  return window.electronAPI.removeHook(projectPath, hookEvent, matcher, command);
+  return window.electronAPI.removeHook(projectPath, hookEvent, matcher, command, settingsFileName);
 }
 
 export async function hookDirExists(projectPath: string): Promise<boolean> {
@@ -559,23 +563,24 @@ export async function ensureHooksDir(projectPath: string): Promise<string> {
 // Claude Settings Commands
 // ============================================================================
 
-export async function loadClaudeSettings(projectPath: string): Promise<{
+export async function loadClaudeSettings(projectPath: string, settingsFileName?: string): Promise<{
   exists: boolean;
   path: string;
   settings: ClaudeSettings;
 }> {
-  return window.electronAPI.loadClaudeSettings(projectPath);
+  return window.electronAPI.loadClaudeSettings(projectPath, settingsFileName);
 }
 
 export async function saveClaudeSettings(
   projectPath: string,
-  settings: ClaudeSettings
+  settings: ClaudeSettings,
+  settingsFileName?: string
 ): Promise<{
   success: boolean;
   path: string;
   message: string;
 }> {
-  return window.electronAPI.saveClaudeSettings(projectPath, settings);
+  return window.electronAPI.saveClaudeSettings(projectPath, settings, settingsFileName);
 }
 
 export async function loadUserClaudeSettings(): Promise<{
@@ -593,8 +598,8 @@ export async function loadAllClaudeSettings(projectPath: string): Promise<{
   return window.electronAPI.loadAllClaudeSettings(projectPath);
 }
 
-export async function claudeSettingsExists(projectPath: string): Promise<boolean> {
-  return window.electronAPI.claudeSettingsExists(projectPath);
+export async function claudeSettingsExists(projectPath: string, settingsFileName?: string): Promise<boolean> {
+  return window.electronAPI.claudeSettingsExists(projectPath, settingsFileName);
 }
 
 export async function ensureClaudeSettingsDir(projectPath: string): Promise<string> {

@@ -127,28 +127,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Hook commands
   loadTemplateHooks: () =>
     ipcRenderer.invoke('hook:loadTemplates'),
-  listHooks: (projectPath) =>
-    ipcRenderer.invoke('hook:list', { projectPath }),
-  deployHook: (projectPath, hook) =>
-    ipcRenderer.invoke('hook:deploy', { projectPath, hook }),
-  removeHook: (projectPath, hookEvent, matcher, command) =>
-    ipcRenderer.invoke('hook:remove', { projectPath, hookEvent, matcher, command }),
+  listHooks: (projectPath, settingsFileName) =>
+    ipcRenderer.invoke('hook:list', { projectPath, settingsFileName }),
+  deployHook: (projectPath, hook, settingsFileName) =>
+    ipcRenderer.invoke('hook:deploy', { projectPath, hook, settingsFileName }),
+  removeHook: (projectPath, hookEvent, matcher, command, settingsFileName) =>
+    ipcRenderer.invoke('hook:remove', { projectPath, hookEvent, matcher, command, settingsFileName }),
   hookDirExists: (projectPath) =>
     ipcRenderer.invoke('hook:dirExists', { projectPath }),
   ensureHooksDir: (projectPath) =>
     ipcRenderer.invoke('hook:ensureDir', { projectPath }),
 
   // Claude Settings commands
-  loadClaudeSettings: (projectPath) =>
-    ipcRenderer.invoke('claudeSettings:load', { projectPath }),
-  saveClaudeSettings: (projectPath, settings) =>
-    ipcRenderer.invoke('claudeSettings:save', { projectPath, settings }),
+  loadClaudeSettings: (projectPath, settingsFileName) =>
+    ipcRenderer.invoke('claudeSettings:load', { projectPath, settingsFileName }),
+  saveClaudeSettings: (projectPath, settings, settingsFileName) =>
+    ipcRenderer.invoke('claudeSettings:save', { projectPath, settings, settingsFileName }),
   loadUserClaudeSettings: () =>
     ipcRenderer.invoke('claudeSettings:loadUser'),
   loadAllClaudeSettings: (projectPath) =>
     ipcRenderer.invoke('claudeSettings:loadAll', { projectPath }),
-  claudeSettingsExists: (projectPath) =>
-    ipcRenderer.invoke('claudeSettings:exists', { projectPath }),
+  claudeSettingsExists: (projectPath, settingsFileName) =>
+    ipcRenderer.invoke('claudeSettings:exists', { projectPath, settingsFileName }),
   ensureClaudeSettingsDir: (projectPath) =>
     ipcRenderer.invoke('claudeSettings:ensureDir', { projectPath }),
   validateClaudeSettings: (settings) =>

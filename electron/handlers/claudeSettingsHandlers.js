@@ -8,10 +8,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 export function registerClaudeSettingsHandlers(ipcMain) {
-  // Load settings from .claude/settings.json
-  ipcMain.handle('claudeSettings:load', async (event, { projectPath }) => {
+  // Load settings from .claude/settings.json or settings.local.json
+  ipcMain.handle('claudeSettings:load', async (event, { projectPath, settingsFileName = 'settings.json' }) => {
     try {
-      const settingsPath = path.join(projectPath, '.claude', 'settings.json');
+      const settingsPath = path.join(projectPath, '.claude', settingsFileName);
 
       // Check if settings file exists
       try {
@@ -39,11 +39,11 @@ export function registerClaudeSettingsHandlers(ipcMain) {
     }
   });
 
-  // Save settings to .claude/settings.json
-  ipcMain.handle('claudeSettings:save', async (event, { projectPath, settings }) => {
+  // Save settings to .claude/settings.json or settings.local.json
+  ipcMain.handle('claudeSettings:save', async (event, { projectPath, settings, settingsFileName = 'settings.json' }) => {
     try {
       const claudeDir = path.join(projectPath, '.claude');
-      const settingsPath = path.join(claudeDir, 'settings.json');
+      const settingsPath = path.join(claudeDir, settingsFileName);
 
       // Ensure .claude directory exists
       await fs.mkdir(claudeDir, { recursive: true });
@@ -179,9 +179,9 @@ export function registerClaudeSettingsHandlers(ipcMain) {
   });
 
   // Check if settings file exists
-  ipcMain.handle('claudeSettings:exists', async (event, { projectPath }) => {
+  ipcMain.handle('claudeSettings:exists', async (event, { projectPath, settingsFileName = 'settings.json' }) => {
     try {
-      const settingsPath = path.join(projectPath, '.claude', 'settings.json');
+      const settingsPath = path.join(projectPath, '.claude', settingsFileName);
       await fs.access(settingsPath);
       return true;
     } catch {

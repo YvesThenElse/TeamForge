@@ -24,6 +24,7 @@ interface HookDetailModalProps {
   hook: Hook;
   projectPath: string | null;
   isDeployed: boolean;
+  claudeSettingsFile: string;
   onClose: () => void;
   onDeploy: (hook: Hook) => void;
   onRemove: (hook: Hook) => void;
@@ -33,6 +34,7 @@ export function HookDetailModal({
   hook,
   projectPath,
   isDeployed,
+  claudeSettingsFile,
   onClose,
   onDeploy,
   onRemove,
@@ -209,7 +211,7 @@ export function HookDetailModal({
           {/* Configuration Preview */}
           <div>
             <label className="text-sm font-medium text-muted-foreground mb-2 block">
-              Configuration Preview (.claude/settings.json)
+              Configuration Preview (.claude/{claudeSettingsFile})
             </label>
             <div className="bg-muted p-4 rounded-lg overflow-auto">
               <pre className="text-sm whitespace-pre-wrap font-mono">
@@ -239,7 +241,7 @@ export function HookDetailModal({
               <li>• <strong>Triggers:</strong> When the <code className="bg-muted px-1">{hook.event}</code> event occurs</li>
               <li>• <strong>Matches:</strong> Tools matching <code className="bg-muted px-1">{hook.matcher}</code></li>
               <li>• <strong>Executes:</strong> The shell command specified above</li>
-              <li>• <strong>Location:</strong> Saved to <code className="bg-muted px-1">.claude/settings.json</code></li>
+              <li>• <strong>Location:</strong> Saved to <code className="bg-muted px-1">.claude/{claudeSettingsFile}</code></li>
             </ul>
           </div>
         </div>

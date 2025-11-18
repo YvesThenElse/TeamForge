@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { useProjectStore } from "@/stores/projectStore";
+import { useSettingsStore } from "@/stores/settingsStore";
 import type { Hook, HookEvent } from "@/types/hook";
 import * as electron from "@/services/electron";
 import { HookDetailModal } from "./HookDetailModal";
@@ -27,6 +28,7 @@ function getEventBadgeClass(event: HookEvent): string {
 
 export function HooksTab() {
   const { projectPath } = useProjectStore();
+  const { claudeSettingsFile } = useSettingsStore();
   const [library, setLibrary] = useState<Hook[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -78,7 +80,7 @@ export function HooksTab() {
     if (!projectPath) return;
 
     try {
-      const deployed = await electron.listHooks(projectPath);
+      const deployed = await electron.listHooks(projectPath, claudeSettingsFile);
       setDeployedHooks(deployed);
     } catch (err) {
       console.error("[HooksTab] Failed to load deployed hooks:", err);
@@ -117,8 +119,8 @@ export function HooksTab() {
       // Ensure .claude directory exists
       await electron.ensureHooksDir(projectPath);
 
-      // Deploy hook to project's .claude/settings.json
-      await electron.deployHook(projectPath, hook);
+      // Deploy hook to project's .claude/settings file
+      await electron.deployHook(projectPath, hook, claudeSettingsFile);
 
       alert(`Hook "${hook.name}" deployed successfully`);
       setSelectedHook(null);
@@ -137,7 +139,7 @@ export function HooksTab() {
     }
 
     try {
-      await electron.removeHook(projectPath, hook.event, hook.matcher, hook.command);
+      await electron.removeHook(projectPath, hook.event, hook.matcher, hook.command, claudeSettingsFile);
       alert(`Hook "${hook.name}" removed successfully`);
       loadDeployedHooks();
     } catch (err) {
@@ -343,6 +345,7 @@ export function HooksTab() {
           hook={selectedHook}
           projectPath={projectPath}
           isDeployed={isHookDeployed(selectedHook)}
+          claudeSettingsFile={claudeSettingsFile}
           onClose={() => setSelectedHook(null)}
           onDeploy={handleDeployHook}
           onRemove={handleRemoveHook}

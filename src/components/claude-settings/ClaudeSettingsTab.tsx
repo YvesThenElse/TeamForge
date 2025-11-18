@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Settings2, Shield, Sliders, Plug, Code } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { Card, CardContent } from "@/components/ui/Card";
 import { ToolsPermissionsTab } from "./ToolsPermissionsTab";
 import { GeneralSettingsTab } from "./GeneralSettingsTab";
@@ -11,6 +12,7 @@ type SubTab = "tools" | "general" | "mcp" | "advanced";
 
 export function ClaudeSettingsTab() {
   const { projectPath } = useProjectStore();
+  const { claudeSettingsFile } = useSettingsStore();
   const [activeTab, setActiveTab] = useState<SubTab>("tools");
 
   const tabs = [
@@ -82,7 +84,7 @@ export function ClaudeSettingsTab() {
           Claude Code Settings
         </h2>
         <p className="text-muted-foreground mt-2">
-          Configure Claude Code settings for this project (.claude/settings.json)
+          Configure Claude Code settings for this project (.claude/{claudeSettingsFile})
         </p>
       </div>
 

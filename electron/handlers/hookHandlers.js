@@ -21,9 +21,9 @@ export function registerHookHandlers(ipcMain) {
   });
 
   // List deployed hooks in project
-  ipcMain.handle('hook:list', async (event, { projectPath }) => {
+  ipcMain.handle('hook:list', async (event, { projectPath, settingsFileName = 'settings.json' }) => {
     try {
-      const hooksSettingsPath = path.join(projectPath, '.claude', 'settings.json');
+      const hooksSettingsPath = path.join(projectPath, '.claude', settingsFileName);
 
       // Check if settings file exists
       try {
@@ -61,10 +61,10 @@ export function registerHookHandlers(ipcMain) {
   });
 
   // Deploy a hook to project
-  ipcMain.handle('hook:deploy', async (event, { projectPath, hook }) => {
+  ipcMain.handle('hook:deploy', async (event, { projectPath, hook, settingsFileName = 'settings.json' }) => {
     try {
       const claudeDir = path.join(projectPath, '.claude');
-      const hooksSettingsPath = path.join(claudeDir, 'settings.json');
+      const hooksSettingsPath = path.join(claudeDir, settingsFileName);
 
       // Ensure .claude directory exists
       await fs.mkdir(claudeDir, { recursive: true });
@@ -117,9 +117,9 @@ export function registerHookHandlers(ipcMain) {
   });
 
   // Remove a hook from project
-  ipcMain.handle('hook:remove', async (event, { projectPath, hookEvent, matcher, command }) => {
+  ipcMain.handle('hook:remove', async (event, { projectPath, hookEvent, matcher, command, settingsFileName = 'settings.json' }) => {
     try {
-      const hooksSettingsPath = path.join(projectPath, '.claude', 'settings.json');
+      const hooksSettingsPath = path.join(projectPath, '.claude', settingsFileName);
 
       const content = await fs.readFile(hooksSettingsPath, 'utf-8');
       const settings = JSON.parse(content);

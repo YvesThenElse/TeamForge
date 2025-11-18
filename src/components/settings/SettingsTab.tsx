@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings, GitBranch, RefreshCw, Download, Trash2, CheckCircle, AlertCircle, FolderGit, Cpu, Palette } from "lucide-react";
+import { Settings, GitBranch, RefreshCw, Download, Trash2, CheckCircle, AlertCircle, FolderGit, Cpu, Palette, FileCode } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -17,6 +17,7 @@ export function SettingsTab() {
     defaultTools,
     theme,
     confirmDeploy,
+    claudeSettingsFile,
     setAgentRepositoryUrl,
     setAgentRepositoryBranch,
     setLastSync,
@@ -25,6 +26,7 @@ export function SettingsTab() {
     setDefaultTools,
     setTheme,
     setConfirmDeploy,
+    setClaudeSettingsFile,
   } = useSettingsStore();
   const { setLibrary, setIsLoading } = useAgentStore();
 
@@ -388,6 +390,36 @@ export function SettingsTab() {
               onChange={(e) => setConfirmDeploy(e.target.checked)}
               className="h-4 w-4"
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Claude Settings File */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileCode className="h-5 w-5" />
+            Claude Settings File
+          </CardTitle>
+          <CardDescription>
+            Choose which file to use for Claude Code settings and hooks
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <label className="text-sm font-medium">Settings File Name</label>
+            <select
+              value={claudeSettingsFile}
+              onChange={(e) => setClaudeSettingsFile(e.target.value as "settings.json" | "settings.local.json")}
+              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="settings.json">settings.json (tracked in git)</option>
+              <option value="settings.local.json">settings.local.json (git-ignored, recommended)</option>
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              settings.local.json is typically git-ignored and won't be committed to your repository.
+              This is recommended for local configurations like hooks and personal settings.
+            </p>
           </div>
         </CardContent>
       </Card>

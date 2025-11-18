@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { useProjectStore } from "@/stores/projectStore";
+import { useSettingsStore } from "@/stores/settingsStore";
 import type { ClaudeSettings } from "@/types/claudeSettings";
 import * as electron from "@/services/electron";
 
 export function GeneralSettingsTab() {
   const { projectPath } = useProjectStore();
+  const { claudeSettingsFile } = useSettingsStore();
   const [settings, setSettings] = useState<ClaudeSettings>({});
   const [loading, setLoading] = useState(true);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -32,7 +34,7 @@ export function GeneralSettingsTab() {
 
     setLoading(true);
     try {
-      const result = await electron.loadClaudeSettings(projectPath);
+      const result = await electron.loadClaudeSettings(projectPath, claudeSettingsFile);
       setSettings(result.settings);
 
       // Load general settings
@@ -65,7 +67,7 @@ export function GeneralSettingsTab() {
         outputStyle: outputStyle || undefined,
       };
 
-      await electron.saveClaudeSettings(projectPath, updatedSettings);
+      await electron.saveClaudeSettings(projectPath, updatedSettings, claudeSettingsFile);
       setSettings(updatedSettings);
       setSaveMessage({ type: 'success', text: 'Settings saved successfully!' });
       setTimeout(() => setSaveMessage(null), 3000);
