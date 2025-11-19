@@ -48,7 +48,7 @@ export function MainLayout() {
   };
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col bg-background">
       <Header />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
@@ -56,7 +56,7 @@ export function MainLayout() {
           onStepChange={setCurrentStep}
           hasProjectSelected={!!projectPath}
         />
-        <main className="flex-1 overflow-hidden flex flex-col relative">
+        <main className="flex-1 overflow-hidden flex flex-col relative bg-background">
           <div className="container mx-auto p-6 flex-1 flex flex-col overflow-auto">{renderContent()}</div>
         </main>
       </div>

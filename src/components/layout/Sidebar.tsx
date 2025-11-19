@@ -72,8 +72,8 @@ export function Sidebar({ currentStep, onStepChange, hasProjectSelected = false 
   ];
 
   return (
-    <aside className="w-64 border-r border-border bg-card">
-      <nav className="p-4 space-y-2">
+    <aside className="w-64 border-r border-slate-700 bg-gradient-to-r from-slate-900 to-slate-800">
+      <nav className="p-4 space-y-1.5">
         {steps.map((step) => {
           const Icon = step.icon;
           const isActive = currentStep === step.id;
@@ -85,23 +85,31 @@ export function Sidebar({ currentStep, onStepChange, hasProjectSelected = false 
               onClick={() => !isDisabled && onStepChange(step.id)}
               disabled={isDisabled}
               className={cn(
-                "w-full flex items-start space-x-3 rounded-lg p-3 text-left transition-colors",
+                "w-full flex items-start space-x-3 rounded-xl p-3 text-left transition-all duration-200 relative",
                 isDisabled
-                  ? "opacity-50 cursor-not-allowed"
+                  ? "opacity-40 cursor-not-allowed text-slate-600"
                   : isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-accent hover:text-accent-foreground"
+                  ? "bg-slate-700 text-white shadow-lg border border-slate-600"
+                  : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
               )}
             >
-              <Icon className="h-5 w-5 mt-0.5 flex-shrink-0" />
+              {/* Orange accent bar for active item */}
+              {isActive && (
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-10 bg-accent rounded-r-full shadow-sm" />
+              )}
+
+              <Icon className={cn(
+                "h-6 w-6 mt-0.5 flex-shrink-0 transition-transform duration-200",
+                isActive && "scale-110"
+              )} />
               <div className="flex-1 min-w-0">
                 <div className="font-medium">{step.label}</div>
                 <div
                   className={cn(
                     "text-xs mt-0.5",
                     isActive
-                      ? "text-primary-foreground/80"
-                      : "text-muted-foreground"
+                      ? "text-slate-300"
+                      : "text-slate-500"
                   )}
                 >
                   {step.description}
