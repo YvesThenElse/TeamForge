@@ -84,6 +84,8 @@ export function Sidebar({ currentStep, onStepChange, hasProjectSelected = false 
                 "w-full flex items-start space-x-3 rounded-xl p-3 text-left transition-all duration-200 relative",
                 isDisabled
                   ? "opacity-40 cursor-not-allowed text-slate-600"
+                  : isActive && isPrimary
+                  ? "bg-accent/15 text-white shadow-lg border border-accent/40 shadow-accent/10"
                   : isActive
                   ? "bg-slate-700 text-white shadow-lg border border-slate-600"
                   : isPrimary
@@ -99,6 +101,7 @@ export function Sidebar({ currentStep, onStepChange, hasProjectSelected = false 
               <Icon className={cn(
                 "h-6 w-6 mt-0.5 flex-shrink-0 transition-transform duration-200",
                 isActive && "scale-110",
+                isPrimary && !isDisabled && "text-accent",
                 isPrimary && !isActive && !isDisabled && "text-accent/70"
               )} />
               <div className="flex-1 min-w-0">
