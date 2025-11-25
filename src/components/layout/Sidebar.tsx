@@ -1,9 +1,9 @@
-import { FolderOpen, Users, Sparkles, Sliders, HelpCircle, Shield, Zap, Settings2, Wrench } from "lucide-react";
+import { FolderOpen, Users, Sparkles, Sliders, HelpCircle, Zap, Settings2, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
-  currentStep: "project" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "agent-tools" | "claude-settings" | "settings" | "help";
-  onStepChange: (step: "project" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "agent-tools" | "claude-settings" | "settings" | "help") => void;
+  currentStep: "project" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "claude-settings" | "settings" | "help";
+  onStepChange: (step: "project" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "claude-settings" | "settings" | "help") => void;
   hasProjectSelected?: boolean;
 }
 
@@ -39,12 +39,6 @@ export function Sidebar({ currentStep, onStepChange, hasProjectSelected = false 
       label: "Hooks",
       icon: Zap,
       description: "Lifecycle hooks",
-    },
-    {
-      id: "agent-tools" as const,
-      label: "Agent Tools",
-      icon: Shield,
-      description: "Agent permissions",
     },
     {
       id: "claude-settings" as const,
