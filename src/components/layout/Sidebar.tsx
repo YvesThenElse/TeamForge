@@ -1,9 +1,9 @@
-import { FolderOpen, Users, Sparkles, Sliders, HelpCircle, Shield, FileCheck, Zap, Settings2, Wrench } from "lucide-react";
+import { FolderOpen, Users, Sparkles, Sliders, HelpCircle, Shield, Zap, Settings2, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
-  currentStep: "project" | "agents" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "agent-tools" | "claude-settings" | "settings" | "help";
-  onStepChange: (step: "project" | "agents" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "agent-tools" | "claude-settings" | "settings" | "help") => void;
+  currentStep: "project" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "agent-tools" | "claude-settings" | "settings" | "help";
+  onStepChange: (step: "project" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "agent-tools" | "claude-settings" | "settings" | "help") => void;
   hasProjectSelected?: boolean;
 }
 
@@ -16,22 +16,17 @@ export function Sidebar({ currentStep, onStepChange, hasProjectSelected = false 
       description: "Choose your project",
     },
     {
-      id: "agents" as const,
-      label: "Project Configuration",
-      icon: FileCheck,
-      description: "Current project setup",
+      id: "configure-teams" as const,
+      label: "Teams",
+      icon: Users,
+      description: "Create teams",
+      isPrimary: true,
     },
     {
       id: "configure-agents" as const,
-      label: "Configure Agent",
+      label: "Agents",
       icon: Sliders,
       description: "Agent library",
-    },
-    {
-      id: "configure-teams" as const,
-      label: "Configure Team",
-      icon: Users,
-      description: "Create teams",
     },
     {
       id: "skills" as const,
@@ -78,6 +73,7 @@ export function Sidebar({ currentStep, onStepChange, hasProjectSelected = false 
           const Icon = step.icon;
           const isActive = currentStep === step.id;
           const isDisabled = step.id !== "project" && !hasProjectSelected;
+          const isPrimary = 'isPrimary' in step && step.isPrimary;
 
           return (
             <button
@@ -90,6 +86,8 @@ export function Sidebar({ currentStep, onStepChange, hasProjectSelected = false 
                   ? "opacity-40 cursor-not-allowed text-slate-600"
                   : isActive
                   ? "bg-slate-700 text-white shadow-lg border border-slate-600"
+                  : isPrimary
+                  ? "text-slate-300 hover:bg-slate-800/80 hover:text-white border border-accent/20 bg-accent/5"
                   : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
               )}
             >
@@ -100,15 +98,21 @@ export function Sidebar({ currentStep, onStepChange, hasProjectSelected = false 
 
               <Icon className={cn(
                 "h-6 w-6 mt-0.5 flex-shrink-0 transition-transform duration-200",
-                isActive && "scale-110"
+                isActive && "scale-110",
+                isPrimary && !isActive && !isDisabled && "text-accent/70"
               )} />
               <div className="flex-1 min-w-0">
-                <div className="font-medium">{step.label}</div>
+                <div className={cn(
+                  "font-medium",
+                  isPrimary && !isActive && !isDisabled && "text-slate-200"
+                )}>{step.label}</div>
                 <div
                   className={cn(
                     "text-xs mt-0.5",
                     isActive
                       ? "text-slate-300"
+                      : isPrimary
+                      ? "text-slate-400"
                       : "text-slate-500"
                   )}
                 >

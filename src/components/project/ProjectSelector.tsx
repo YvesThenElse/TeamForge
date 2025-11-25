@@ -1,11 +1,16 @@
 import { useState, useEffect } from "react";
-import { FolderOpen, GitBranch, Loader2, Clock, X, CheckCircle, XCircle, Info, ExternalLink } from "lucide-react";
+import { FolderOpen, GitBranch, Loader2, Clock, X, CheckCircle, XCircle, Info, ExternalLink, Wrench, BookOpen, Eye } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
 import { useProject } from "@/hooks/useProject";
 import { getRecentProjects, removeRecentProject, type RecentProject } from "@/lib/recentProjects";
 import type { ClaudeInfo, GlobalClaudeInfo } from "@/types/claudeInfo";
+import type { AgentFile } from "@/types/agentFile";
+import type { Skill } from "@/types/skill";
+import { AgentDetailModal } from "@/components/agents/AgentDetailModal";
+import { SkillDetailModal } from "@/components/skills/SkillDetailModal";
 import * as electron from "@/services/electron";
 
 export function ProjectSelector() {
@@ -14,6 +19,11 @@ export function ProjectSelector() {
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
   const [projectClaudeInfo, setProjectClaudeInfo] = useState<ClaudeInfo | null>(null);
   const [globalClaudeInfo, setGlobalClaudeInfo] = useState<GlobalClaudeInfo | null>(null);
+  const [agents, setAgents] = useState<AgentFile[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [selectedAgent, setSelectedAgent] = useState<AgentFile | null>(null);
+  const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
+  const [loadingConfig, setLoadingConfig] = useState(false);
   const { projectPath, analysis, isAnalyzing, selectProjectFolder, analyzeProjectFolder, cloneRepository } = useProject();
 
   useEffect(() => {
@@ -30,21 +40,62 @@ export function ProjectSelector() {
     };
     loadGlobalClaudeConfig();
 
-    // Load project Claude config (from project/.claude/)
+    // Load project Claude config and deployed agents/skills
     if (projectPath) {
-      const loadProjectClaudeConfig = async () => {
-        try {
-          const info = await electron.getClaudeInfo(projectPath);
-          setProjectClaudeInfo(info);
-        } catch (err) {
-          console.error("Failed to load project Claude info:", err);
-        }
-      };
-      loadProjectClaudeConfig();
+      loadProjectConfiguration();
     } else {
       setProjectClaudeInfo(null);
+      setAgents([]);
+      setSkills([]);
     }
   }, [projectPath]);
+
+  const loadProjectConfiguration = async () => {
+    if (!projectPath) return;
+
+    setLoadingConfig(true);
+    try {
+      const [claudeInfo, agentFiles, skillFiles] = await Promise.all([
+        electron.getClaudeInfo(projectPath),
+        electron.listAgentFiles(projectPath),
+        electron.listSkills(projectPath),
+      ]);
+
+      setProjectClaudeInfo(claudeInfo);
+      setAgents(agentFiles);
+      setSkills(skillFiles);
+    } catch (err) {
+      console.error("Failed to load project configuration:", err);
+    } finally {
+      setLoadingConfig(false);
+    }
+  };
+
+  const handleRemoveAgent = async (agentId: string) => {
+    if (!projectPath || !confirm("Remove this agent from the project?")) return;
+
+    try {
+      await electron.deleteAgentFile(projectPath, agentId);
+      await loadProjectConfiguration();
+      setSelectedAgent(null);
+    } catch (err) {
+      console.error("Failed to remove agent:", err);
+      alert("Failed to remove agent");
+    }
+  };
+
+  const handleRemoveSkill = async (skillId: string) => {
+    if (!projectPath || !confirm("Remove this skill from the project?")) return;
+
+    try {
+      await electron.deleteSkill(projectPath, skillId);
+      await loadProjectConfiguration();
+      setSelectedSkill(null);
+    } catch (err) {
+      console.error("Failed to remove skill:", err);
+      alert("Failed to remove skill");
+    }
+  };
 
   const handleSelectFolder = async () => {
     console.log("[ProjectSelector] Browse Folder button clicked");
@@ -493,83 +544,156 @@ export function ProjectSelector() {
         </Card>
       </div>
 
-      {/* Project Claude Agents and Skills Lists */}
-      {projectPath && projectClaudeInfo && (
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Project Claude Agents */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Info className="h-5 w-5" />
-                <span>Project Claude Agents</span>
-              </CardTitle>
-              <CardDescription>
-                Agents configured in .claude/agents/ directory
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {projectClaudeInfo.agents && projectClaudeInfo.agents.length > 0 ? (
-                <div>
-                  <p className="text-sm font-medium mb-2">
-                    Agents ({projectClaudeInfo.agents.length}):
-                  </p>
-                  <div className="bg-muted p-2 rounded-lg space-y-1 max-h-60 overflow-y-auto">
-                    {projectClaudeInfo.agents.map((agent) => (
-                      <div
-                        key={agent}
-                        className="flex items-center space-x-2 text-sm p-1.5 rounded hover:bg-background/50 transition-colors"
-                      >
-                        <CheckCircle className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                        <span className="font-mono text-xs">{agent}</span>
+      {/* Deployed Agents - Detailed Table */}
+      {projectPath && agents.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Wrench className="h-4 w-4" />
+              Deployed Agents ({agents.length})
+            </CardTitle>
+            <CardDescription>
+              Agents in .claude/agents/ directory
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingConfig ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {agents.map((agent) => (
+                  <div
+                    key={agent.id}
+                    className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{agent.name}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {agent.model || "inherit"}
+                        </Badge>
                       </div>
-                    ))}
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {agent.description || "No description"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      <span className="text-xs text-muted-foreground">
+                        {typeof agent.tools === 'string' && agent.tools === '*' ? 'All tools' : 'Custom tools'}
+                      </span>
+                      <Button
+                        onClick={() => setSelectedAgent(agent)}
+                        variant="ghost"
+                        size="sm"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="text-sm text-muted-foreground text-center py-4">
-                  No agents configured yet
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
-          {/* Project Claude Skills */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Info className="h-5 w-5" />
-                <span>Project Claude Skills</span>
-              </CardTitle>
-              <CardDescription>
-                Skills configured in .claude/skills/ directory
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {projectClaudeInfo.skills && projectClaudeInfo.skills.length > 0 ? (
-                <div>
-                  <p className="text-sm font-medium mb-2">
-                    Skills ({projectClaudeInfo.skills.length}):
-                  </p>
-                  <div className="bg-muted p-2 rounded-lg space-y-1 max-h-60 overflow-y-auto">
-                    {projectClaudeInfo.skills.map((skill) => (
-                      <div
-                        key={skill}
-                        className="flex items-center space-x-2 text-sm p-1.5 rounded hover:bg-background/50 transition-colors"
-                      >
-                        <CheckCircle className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                        <span className="font-mono text-xs">{skill}</span>
+      {/* Deployed Skills - Detailed Table */}
+      {projectPath && skills.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Deployed Skills ({skills.length})
+            </CardTitle>
+            <CardDescription>
+              Skills in .claude/skills/ directory
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingConfig ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {skills.map((skill) => (
+                  <div
+                    key={skill.id}
+                    className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{skill.name}</span>
+                        {skill.category && (
+                          <Badge variant="outline" className="text-xs">
+                            {skill.category}
+                          </Badge>
+                        )}
                       </div>
-                    ))}
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {skill.description || "No description"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      {skill.tags && skill.tags.length > 0 && (
+                        <div className="flex gap-1">
+                          {skill.tags.slice(0, 2).map((tag) => (
+                            <span key={tag} className="px-2 py-0.5 bg-muted text-xs rounded">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <Button
+                        onClick={() => setSelectedSkill(skill)}
+                        variant="ghost"
+                        size="sm"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="text-sm text-muted-foreground text-center py-4">
-                  No skills configured yet
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Agent Detail Modal */}
+      {selectedAgent && (
+        <AgentDetailModal
+          agent={{
+            id: selectedAgent.id,
+            name: selectedAgent.name,
+            description: selectedAgent.description,
+            category: "General" as any,
+            template: selectedAgent.systemPrompt,
+            tags: [],
+            suggestedFor: [],
+            tools: selectedAgent.tools,
+            model: selectedAgent.model as any,
+          }}
+          projectPath={projectPath}
+          onClose={() => setSelectedAgent(null)}
+          onAddAgent={() => alert("This agent is already deployed")}
+          onRemoveAgent={handleRemoveAgent}
+          isDeployed={true}
+        />
+      )}
+
+      {/* Skill Detail Modal */}
+      {selectedSkill && (
+        <SkillDetailModal
+          skill={selectedSkill}
+          projectPath={projectPath}
+          onClose={() => setSelectedSkill(null)}
+          onAddSkill={() => alert("This skill is already deployed")}
+          onRemoveSkill={handleRemoveSkill}
+          isDeployed={true}
+        />
       )}
     </div>
   );

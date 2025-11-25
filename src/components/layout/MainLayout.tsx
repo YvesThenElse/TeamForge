@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 import { ProjectSelector } from "@/components/project/ProjectSelector";
-import { ProjectAgentsTab } from "@/components/agents/ProjectAgentsTab";
 import { ConfigureAgentTab } from "@/components/agents/ConfigureAgentTab";
 import { ConfigureTeamTab } from "@/components/agents/ConfigureTeamTab";
 import { SkillsTab } from "@/components/skills/SkillsTab";
@@ -15,7 +14,7 @@ import { useProjectStore } from "@/stores/projectStore";
 
 export function MainLayout() {
   const [currentStep, setCurrentStep] = useState<
-    "project" | "agents" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "agent-tools" | "claude-settings" | "settings" | "help"
+    "project" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "agent-tools" | "claude-settings" | "settings" | "help"
   >("project");
 
   const { projectPath } = useProjectStore();
@@ -24,8 +23,6 @@ export function MainLayout() {
     switch (currentStep) {
       case "project":
         return <ProjectSelector />;
-      case "agents":
-        return <ProjectAgentsTab />;
       case "configure-agents":
         return <ConfigureAgentTab />;
       case "configure-teams":
