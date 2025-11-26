@@ -7,20 +7,69 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 export function registerHookHandlers(ipcMain) {
-  // Load hook templates from embedded library
-  ipcMain.handle('hook:loadTemplates', async (event, { devMode = false } = {}) => {
+  // Load hook templates from configured path
+  ipcMain.handle('hook:loadTemplates', async (event, { devMode = false, cachePath = null, devPath = null, projectPath = null, sourcePath = null } = {}) => {
     try {
-      const dirName = devMode ? 'hooks_dev' : 'hooks_template';
-      const libraryPath = path.join(__dirname, '..', '..', dirName, 'library.json');
+      let templatesDir;
 
-      console.log(`[hook:loadTemplates] Loading from ${devMode ? '(dev mode)' : ''}:`, libraryPath);
+      if (devMode) {
+        // In dev mode, require devPath to be configured
+        if (!devPath) {
+          throw new Error('Developer mode is enabled but no Dev Path is configured. Please set a Dev Path in Settings > Hooks.');
+        }
+        // Resolve relative paths from project path
+        if (!path.isAbsolute(devPath)) {
+          if (projectPath) {
+            templatesDir = path.join(projectPath, devPath);
+          } else {
+            throw new Error('Developer mode with relative path requires a project to be selected.');
+          }
+        } else {
+          templatesDir = devPath;
+        }
+        console.log('[hook:loadTemplates] Developer mode: Loading from:', templatesDir);
+      } else {
+        // Normal mode: use cachePath
+        if (!cachePath) {
+          console.log('[hook:loadTemplates] No cache path configured');
+          return [];
+        }
+        // Resolve relative paths from project path
+        let repoPath = cachePath;
+        if (!path.isAbsolute(repoPath)) {
+          if (projectPath) {
+            repoPath = path.join(projectPath, repoPath);
+          } else {
+            console.log('[hook:loadTemplates] Relative path requires a project');
+            return [];
+          }
+        }
+        // Apply sourcePath if provided
+        templatesDir = sourcePath ? path.join(repoPath, sourcePath) : repoPath;
+        console.log('[hook:loadTemplates] Loading from cache:', templatesDir);
+      }
+
+      // Check if directory exists
+      try {
+        await fs.access(templatesDir);
+      } catch {
+        console.log('[hook:loadTemplates] Directory not found:', templatesDir);
+        if (devMode) {
+          throw new Error(`Dev directory not found: ${templatesDir}`);
+        }
+        return [];
+      }
+
+      // Load library.json from the templates directory
+      const libraryPath = path.join(templatesDir, 'library.json');
+      console.log('[hook:loadTemplates] Loading library from:', libraryPath);
 
       const content = await fs.readFile(libraryPath, 'utf-8');
       const library = JSON.parse(content);
-      return library.hooks;
+      return library.hooks || [];
     } catch (error) {
-      console.error('Failed to load hook templates:', error);
-      return [];
+      console.error('[hook:loadTemplates] Failed to load hook templates:', error);
+      throw error;
     }
   });
 

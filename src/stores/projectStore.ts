@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import { Project, ProjectAnalysis } from "@/types";
 
 interface ProjectState {
@@ -18,32 +17,24 @@ interface ProjectState {
   clearProject: () => void;
 }
 
-export const useProjectStore = create<ProjectState>()(
-  persist(
-    (set) => ({
+export const useProjectStore = create<ProjectState>()((set) => ({
+  currentProject: null,
+  projectPath: null,
+  analysis: null,
+  isAnalyzing: false,
+  error: null,
+
+  setCurrentProject: (project) => set({ currentProject: project }),
+  setProjectPath: (path) => set({ projectPath: path }),
+  setAnalysis: (analysis) => set({ analysis }),
+  setIsAnalyzing: (isAnalyzing) => set({ isAnalyzing }),
+  setError: (error) => set({ error }),
+  clearProject: () =>
+    set({
       currentProject: null,
       projectPath: null,
       analysis: null,
       isAnalyzing: false,
       error: null,
-
-      setCurrentProject: (project) => set({ currentProject: project }),
-      setProjectPath: (path) => set({ projectPath: path }),
-      setAnalysis: (analysis) => set({ analysis }),
-      setIsAnalyzing: (isAnalyzing) => set({ isAnalyzing }),
-      setError: (error) => set({ error }),
-      clearProject: () =>
-        set({
-          currentProject: null,
-          projectPath: null,
-          analysis: null,
-          isAnalyzing: false,
-          error: null,
-        }),
     }),
-    {
-      name: "teamforge-project",
-      partialize: (state) => ({ projectPath: state.projectPath }),
-    }
-  )
-);
+}));

@@ -199,21 +199,56 @@ export function registerSkillHandlers(ipcMain) {
     }
   });
 
-  // Load template skills from skills_template directory
-  ipcMain.handle('skill:loadTemplates', async (event, { devMode = false } = {}) => {
+  // Load template skills from configured path
+  ipcMain.handle('skill:loadTemplates', async (event, { devMode = false, cachePath = null, devPath = null, projectPath = null, sourcePath = null } = {}) => {
     try {
-      // Go up from handlers directory to project root
-      const projectRoot = path.join(__dirname, '..', '..');
-      const dirName = devMode ? 'skills_dev' : 'skills_template';
-      const templatesDir = path.join(projectRoot, dirName);
+      let templatesDir;
 
-      console.log(`[skill:loadTemplates] Loading from ${devMode ? '(dev mode)' : ''}:`, templatesDir);
+      if (devMode) {
+        // In dev mode, require devPath to be configured
+        if (!devPath) {
+          throw new Error('Developer mode is enabled but no Dev Path is configured. Please set a Dev Path in Settings > Skills.');
+        }
+        // Resolve relative paths from project path
+        if (!path.isAbsolute(devPath)) {
+          if (projectPath) {
+            templatesDir = path.join(projectPath, devPath);
+          } else {
+            throw new Error('Developer mode with relative path requires a project to be selected.');
+          }
+        } else {
+          templatesDir = devPath;
+        }
+        console.log('[skill:loadTemplates] Developer mode: Loading from:', templatesDir);
+      } else {
+        // Normal mode: use cachePath
+        if (!cachePath) {
+          console.log('[skill:loadTemplates] No cache path configured');
+          return [];
+        }
+        // Resolve relative paths from project path
+        let repoPath = cachePath;
+        if (!path.isAbsolute(repoPath)) {
+          if (projectPath) {
+            repoPath = path.join(projectPath, repoPath);
+          } else {
+            console.log('[skill:loadTemplates] Relative path requires a project');
+            return [];
+          }
+        }
+        // Apply sourcePath if provided
+        templatesDir = sourcePath ? path.join(repoPath, sourcePath) : repoPath;
+        console.log('[skill:loadTemplates] Loading from cache:', templatesDir);
+      }
 
       // Check if directory exists
       try {
         await fs.access(templatesDir);
       } catch {
-        console.log('[skill:loadTemplates] Directory not found');
+        console.log('[skill:loadTemplates] Directory not found:', templatesDir);
+        if (devMode) {
+          throw new Error(`Dev directory not found: ${templatesDir}`);
+        }
         return [];
       }
 
@@ -254,7 +289,7 @@ export function registerSkillHandlers(ipcMain) {
       return validTemplates;
     } catch (err) {
       console.error('[skill:loadTemplates] Failed to load templates:', err);
-      return [];
+      throw err;
     }
   });
 

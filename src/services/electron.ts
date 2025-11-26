@@ -14,6 +14,51 @@ import type { Team } from "@/types/team";
 import type { Hook } from "@/types/hook";
 import type { ClaudeSettings, SettingsFile } from "@/types/claudeSettings";
 
+// TeamForge project-level settings type
+export interface TeamforgeSettings {
+  // Agent Source Settings
+  agentRepoUrl: string;
+  agentRepoBranch: string;
+  agentSourcePath: string;
+  agentDevPath: string;
+  agentCachePath: string;
+  agentLastSync: string | null;
+
+  // Skills Source Settings
+  skillRepoUrl: string;
+  skillRepoBranch: string;
+  skillSourcePath: string;
+  skillDevPath: string;
+  skillCachePath: string;
+  skillLastSync: string | null;
+
+  // Hooks Source Settings
+  hookRepoUrl: string;
+  hookRepoBranch: string;
+  hookSourcePath: string;
+  hookDevPath: string;
+  hookCachePath: string;
+  hookLastSync: string | null;
+
+  // Application Preferences
+  autoSync: boolean;
+  theme: "light" | "dark" | "system";
+  confirmDeploy: boolean;
+  claudeSettingsFile: "settings.json" | "settings.local.json";
+  developerMode: boolean;
+
+  // Default Agent Configuration
+  defaultModel: "sonnet" | "opus" | "haiku";
+  defaultTools: string;
+
+  // Security settings
+  security?: {
+    allowedCommands?: string[];
+    blockedCommands?: string[];
+    requireConfirmation?: boolean;
+  };
+}
+
 // Access the Electron API exposed via preload script
 declare global {
   interface Window {
@@ -36,7 +81,7 @@ declare global {
       analyzeProject: (path: string) => Promise<ProjectAnalysis>;
 
       // Agent commands
-      getAgentLibrary: (devMode?: boolean, cachePath?: string, devPath?: string, projectPath?: string) => Promise<AgentLibraryResponse>;
+      getAgentLibrary: (devMode?: boolean, cachePath?: string, devPath?: string, projectPath?: string, sourcePath?: string) => Promise<AgentLibraryResponse>;
       getAgentsByCategory: (category: string) => Promise<Agent[]>;
       searchAgents: (keyword: string) => Promise<Agent[]>;
       getAgentById: (id: string) => Promise<Agent | null>;
@@ -76,6 +121,9 @@ declare global {
       deleteAgentFile: (projectPath: string, agentId: string) => Promise<{ success: boolean }>;
       agentFileDirExists: (projectPath: string) => Promise<boolean>;
       loadTemplateAgents: () => Promise<Agent[]>;
+      createAgentTemplate: (agent: Partial<Agent>, devPath?: string, projectPath?: string) => Promise<{ success: boolean; path: string; agentId: string; message: string }>;
+      updateAgentTemplate: (agentId: string, agent: Partial<Agent>, devPath?: string, projectPath?: string) => Promise<{ success: boolean; path: string; message: string }>;
+      deleteAgentTemplate: (agentId: string, devPath?: string, projectPath?: string) => Promise<{ success: boolean; message: string }>;
       getClaudeInfo: (projectPath: string) => Promise<ClaudeInfo>;
       getGlobalClaudeInfo: () => Promise<GlobalClaudeInfo>;
 
@@ -91,7 +139,10 @@ declare global {
       deleteSkill: (projectPath: string, skillId: string) => Promise<{ success: boolean }>;
       skillDirExists: (projectPath: string) => Promise<boolean>;
       ensureSkillsDir: (projectPath: string) => Promise<string>;
-      loadTemplateSkills: () => Promise<Skill[]>;
+      loadTemplateSkills: (devMode?: boolean, cachePath?: string, devPath?: string, projectPath?: string, sourcePath?: string) => Promise<Skill[]>;
+      createSkillTemplate: (skill: Partial<Skill>) => Promise<{ success: boolean; path: string; skillId: string; message: string }>;
+      updateSkillTemplate: (skillId: string, skill: Partial<Skill>) => Promise<{ success: boolean; path: string; message: string }>;
+      deleteSkillTemplate: (skillId: string) => Promise<{ success: boolean; message: string }>;
 
       // Team commands
       listTeams: (projectPath: string) => Promise<Team[]>;
@@ -133,7 +184,7 @@ declare global {
         error?: string;
       }>;
       deleteAgentRepository: (cachePath?: string, projectPath?: string) => Promise<{ success: boolean; message: string; path?: string }>;
-      reloadAgents: (devMode?: boolean, cachePath?: string, devPath?: string, projectPath?: string) => Promise<{
+      reloadAgents: (devMode?: boolean, cachePath?: string, devPath?: string, projectPath?: string, sourcePath?: string) => Promise<{
         success: boolean;
         agentCount: number;
         source: string;
@@ -141,7 +192,10 @@ declare global {
       }>;
 
       // Hook commands
-      loadTemplateHooks: () => Promise<Hook[]>;
+      loadTemplateHooks: (devMode?: boolean, cachePath?: string, devPath?: string, projectPath?: string, sourcePath?: string) => Promise<Hook[]>;
+      createHookTemplate: (hook: Partial<Hook>) => Promise<{ success: boolean; hookId: string; message: string }>;
+      updateHookTemplate: (hookId: string, hook: Partial<Hook>) => Promise<{ success: boolean; message: string }>;
+      deleteHookTemplate: (hookId: string) => Promise<{ success: boolean; message: string }>;
       listHooks: (projectPath: string, settingsFileName?: string) => Promise<Array<{
         event: string;
         matcher: string;
@@ -158,6 +212,19 @@ declare global {
       ) => Promise<string>;
       hookDirExists: (projectPath: string) => Promise<boolean>;
       ensureHooksDir: (projectPath: string) => Promise<string>;
+
+      // TeamForge Settings commands (project-level .teamforge/settings.json)
+      loadTeamforgeSettings: (projectPath: string) => Promise<{
+        exists: boolean;
+        path: string;
+        settings: TeamforgeSettings;
+      }>;
+      saveTeamforgeSettings: (projectPath: string, settings: TeamforgeSettings) => Promise<{
+        success: boolean;
+        path: string;
+        message: string;
+      }>;
+      teamforgeSettingsExists: (projectPath: string) => Promise<boolean>;
 
       // Claude Settings commands
       loadClaudeSettings: (projectPath: string, settingsFileName?: string) => Promise<{
@@ -271,8 +338,8 @@ export interface AgentLibraryResponse {
   loadedFrom?: string; // Path to loaded directory
 }
 
-export async function getAgentLibrary(devMode?: boolean, cachePath?: string, devPath?: string, projectPath?: string): Promise<AgentLibraryResponse> {
-  return window.electronAPI.getAgentLibrary(devMode, cachePath, devPath, projectPath);
+export async function getAgentLibrary(devMode?: boolean, cachePath?: string, devPath?: string, projectPath?: string, sourcePath?: string): Promise<AgentLibraryResponse> {
+  return window.electronAPI.getAgentLibrary(devMode, cachePath, devPath, projectPath, sourcePath);
 }
 
 export async function getAgentsByCategory(
@@ -310,27 +377,41 @@ export async function getSuggestedAgents(
 }
 
 // Developer Mode - Agent Template CRUD
-export async function createAgentTemplate(agent: Partial<Agent>): Promise<{
+export async function createAgentTemplate(
+  agent: Partial<Agent>,
+  devPath?: string,
+  projectPath?: string
+): Promise<{
+  success: boolean;
+  path: string;
+  agentId: string;
+  message: string;
+}> {
+  return window.electronAPI.createAgentTemplate(agent, devPath, projectPath);
+}
+
+export async function updateAgentTemplate(
+  agentId: string,
+  agent: Partial<Agent>,
+  devPath?: string,
+  projectPath?: string
+): Promise<{
   success: boolean;
   path: string;
   message: string;
 }> {
-  return window.electronAPI.createAgentTemplate(agent);
+  return window.electronAPI.updateAgentTemplate(agentId, agent, devPath, projectPath);
 }
 
-export async function updateAgentTemplate(agentId: string, agent: Partial<Agent>): Promise<{
-  success: boolean;
-  path: string;
-  message: string;
-}> {
-  return window.electronAPI.updateAgentTemplate(agentId, agent);
-}
-
-export async function deleteAgentTemplate(agentId: string): Promise<{
+export async function deleteAgentTemplate(
+  agentId: string,
+  devPath?: string,
+  projectPath?: string
+): Promise<{
   success: boolean;
   message: string;
 }> {
-  return window.electronAPI.deleteAgentTemplate(agentId);
+  return window.electronAPI.deleteAgentTemplate(agentId, devPath, projectPath);
 }
 
 // ============================================================================
@@ -484,8 +565,14 @@ export async function ensureSkillsDir(projectPath: string): Promise<string> {
   return window.electronAPI.ensureSkillsDir(projectPath);
 }
 
-export async function loadTemplateSkills(devMode?: boolean): Promise<Skill[]> {
-  return window.electronAPI.loadTemplateSkills(devMode);
+export async function loadTemplateSkills(
+  devMode?: boolean,
+  cachePath?: string,
+  devPath?: string,
+  projectPath?: string,
+  sourcePath?: string
+): Promise<Skill[]> {
+  return window.electronAPI.loadTemplateSkills(devMode, cachePath, devPath, projectPath, sourcePath);
 }
 
 // Developer Mode - Skill Template CRUD
@@ -574,16 +661,22 @@ export async function deleteAgentRepository(cachePath?: string, projectPath?: st
   return window.electronAPI.deleteAgentRepository(cachePath, projectPath);
 }
 
-export async function reloadAgents(devMode?: boolean, cachePath?: string, devPath?: string, projectPath?: string) {
-  return window.electronAPI.reloadAgents(devMode, cachePath, devPath, projectPath);
+export async function reloadAgents(devMode?: boolean, cachePath?: string, devPath?: string, projectPath?: string, sourcePath?: string) {
+  return window.electronAPI.reloadAgents(devMode, cachePath, devPath, projectPath, sourcePath);
 }
 
 // ============================================================================
 // Hook Commands
 // ============================================================================
 
-export async function loadTemplateHooks(devMode?: boolean): Promise<Hook[]> {
-  return window.electronAPI.loadTemplateHooks(devMode);
+export async function loadTemplateHooks(
+  devMode?: boolean,
+  cachePath?: string,
+  devPath?: string,
+  projectPath?: string,
+  sourcePath?: string
+): Promise<Hook[]> {
+  return window.electronAPI.loadTemplateHooks(devMode, cachePath, devPath, projectPath, sourcePath);
 }
 
 // Developer Mode - Hook Template CRUD
@@ -642,6 +735,33 @@ export async function hookDirExists(projectPath: string): Promise<boolean> {
 
 export async function ensureHooksDir(projectPath: string): Promise<string> {
   return window.electronAPI.ensureHooksDir(projectPath);
+}
+
+// ============================================================================
+// TeamForge Settings Commands (project-level .teamforge/settings.json)
+// ============================================================================
+
+export async function loadTeamforgeSettings(projectPath: string): Promise<{
+  exists: boolean;
+  path: string;
+  settings: TeamforgeSettings;
+}> {
+  return window.electronAPI.loadTeamforgeSettings(projectPath);
+}
+
+export async function saveTeamforgeSettings(
+  projectPath: string,
+  settings: TeamforgeSettings
+): Promise<{
+  success: boolean;
+  path: string;
+  message: string;
+}> {
+  return window.electronAPI.saveTeamforgeSettings(projectPath, settings);
+}
+
+export async function teamforgeSettingsExists(projectPath: string): Promise<boolean> {
+  return window.electronAPI.teamforgeSettingsExists(projectPath);
 }
 
 // ============================================================================

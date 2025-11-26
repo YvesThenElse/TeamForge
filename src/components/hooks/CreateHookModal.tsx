@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
-import type { HookEvent } from "@/types/hook";
+import type { Hook, HookEvent } from "@/types/hook";
 import * as electron from "@/services/electron";
 
 interface CreateHookModalProps {
@@ -48,7 +48,7 @@ export function CreateHookModal({ onClose, onRefresh }: CreateHookModalProps) {
       const newHook = {
         name: name.trim(),
         description: description.trim(),
-        category: category.trim() || undefined,
+        category: (category.trim() || "Code Quality") as Hook["category"],
         event: event,
         matcher: matcher.trim(),
         command: command.trim(),

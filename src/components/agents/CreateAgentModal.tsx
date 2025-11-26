@@ -3,7 +3,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import { useProjectStore } from "@/stores/projectStore";
+import { useSettingsStore } from "@/stores/settingsStore";
 import * as electron from "@/services/electron";
+import type { Agent } from "@/types";
 
 interface CreateAgentModalProps {
   onClose: () => void;
@@ -11,6 +14,8 @@ interface CreateAgentModalProps {
 }
 
 export function CreateAgentModal({ onClose, onRefresh }: CreateAgentModalProps) {
+  const { projectPath } = useProjectStore();
+  const { agentDevPath } = useSettingsStore();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
@@ -41,15 +46,19 @@ export function CreateAgentModal({ onClose, onRefresh }: CreateAgentModalProps) 
       const newAgent = {
         name: name.trim(),
         description: description.trim(),
-        category: category.trim() || "General",
-        model: model as any,
+        category: (category.trim() || "development") as Agent["category"],
+        model: model as Agent["model"],
         tools: tools.trim(),
         tags: tags ? tags.split(",").map(t => t.trim()).filter(Boolean) : [],
         template: template.trim(),
         suggestedFor: [],
       };
 
-      await electron.createAgentTemplate(newAgent);
+      await electron.createAgentTemplate(
+        newAgent,
+        agentDevPath || undefined,
+        projectPath || undefined
+      );
       alert(`Agent "${name}" created successfully!`);
       onRefresh();
       onClose();

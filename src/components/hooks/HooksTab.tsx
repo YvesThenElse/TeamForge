@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Loader2, Search, X, CheckCircle, RefreshCw, Code, Plus, FolderPlus } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Loader2, Search, X, CheckCircle, RefreshCw, Code, Plus, FolderPlus, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -29,7 +29,7 @@ function getEventBadgeClass(event: HookEvent): string {
 
 export function HooksTab() {
   const { projectPath } = useProjectStore();
-  const { claudeSettingsFile, developerMode, setDeveloperMode } = useSettingsStore();
+  const { claudeSettingsFile, developerMode, setDeveloperMode, hookCachePath, hookSourcePath, hookDevPath } = useSettingsStore();
   const [library, setLibrary] = useState<Hook[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -44,13 +44,60 @@ export function HooksTab() {
     command: string;
     type: string;
   }>>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Compute the full path for display (dev mode uses devPath, normal mode uses cachePath)
+  const fullCachePath = useMemo(() => {
+    if (developerMode) {
+      // Dev mode: use hookDevPath
+      if (!hookDevPath) return null;
+      if (hookDevPath.includes(':') || hookDevPath.startsWith('/')) {
+        return hookDevPath;
+      }
+      // Relative path - needs project
+      if (projectPath) {
+        return `${projectPath}/${hookDevPath}`.replace(/\\/g, '/');
+      }
+      return null;
+    } else {
+      // Normal mode: use hookCachePath
+      if (!hookCachePath) return null;
+      if (hookCachePath.includes(':') || hookCachePath.startsWith('/')) {
+        return hookSourcePath ? `${hookCachePath}/${hookSourcePath}` : hookCachePath;
+      }
+      // Relative path - needs project
+      if (projectPath) {
+        return hookSourcePath
+          ? `${projectPath}/${hookCachePath}/${hookSourcePath}`.replace(/\\/g, '/')
+          : `${projectPath}/${hookCachePath}`.replace(/\\/g, '/');
+      }
+      return null;
+    }
+  }, [developerMode, hookCachePath, hookDevPath, hookSourcePath, projectPath]);
+
+  const handleOpenFolder = async () => {
+    if (fullCachePath) {
+      try {
+        await electron.openFolder(fullCachePath.replace(/\//g, '\\'));
+      } catch (error) {
+        console.error("Failed to open folder:", error);
+      }
+    }
+  };
 
   // Load template hooks
   const loadTemplates = async (devMode = developerMode) => {
     setLoading(true);
+    setLoadError(null);
     try {
       console.log(`[HooksTab] Loading template hooks ${devMode ? '(dev mode)' : ''}...`);
-      const templates = await electron.loadTemplateHooks(devMode);
+      const templates = await electron.loadTemplateHooks(
+        devMode,
+        hookCachePath || undefined,
+        hookDevPath || undefined,
+        projectPath || undefined,
+        hookSourcePath || undefined
+      );
       console.log("[HooksTab] Loaded templates:", templates);
       setLibrary(templates);
 
@@ -59,22 +106,26 @@ export function HooksTab() {
         new Set(templates.map((h) => h.category).filter(Boolean))
       ).sort() as string[];
       setCategories(uniqueCategories);
-    } catch (err) {
+    } catch (err: any) {
       console.error("[HooksTab] Failed to load templates:", err);
+      setLoadError(err.message || "Failed to load hook library");
+      // Clear library when there's an error (especially important for dev mode)
+      setLibrary([]);
+      setCategories([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Load on mount
+  // Load on mount and when relevant settings change
   useEffect(() => {
     loadTemplates();
   }, []);
 
-  // Reload when developer mode changes
+  // Reload when developer mode or path settings change
   useEffect(() => {
     loadTemplates(developerMode);
-  }, [developerMode]);
+  }, [developerMode, projectPath, hookCachePath, hookSourcePath, hookDevPath]);
 
   // Load deployed hooks when project path changes
   useEffect(() => {
@@ -201,14 +252,24 @@ export function HooksTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Hooks Library</h2>
-          <p className="text-muted-foreground mt-1">
-            {library.length} hook{library.length !== 1 ? 's' : ''} loaded from {developerMode ? 'dev templates' : 'templates'}
-          </p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Hooks run shell commands at lifecycle events (PreToolUse, PostToolUse, SessionStart, etc.)
+          <p className="text-sm text-muted-foreground">
+            {library.length > 0 ? (
+              <>
+                {library.length} hook{library.length !== 1 ? 's' : ''} in {categories.length} categor{categories.length !== 1 ? 'ies' : 'y'}
+                {fullCachePath && <span className="ml-1">from <code className="text-xs bg-muted px-1 rounded">{fullCachePath}</code></span>}
+              </>
+            ) : (
+              "No hooks loaded"
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {fullCachePath && library.length > 0 && (
+            <Button variant="outline" size="sm" onClick={handleOpenFolder}>
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Open Folder
+            </Button>
+          )}
           <Button
             onClick={handleRefresh}
             disabled={isRefreshing}
@@ -242,8 +303,22 @@ export function HooksTab() {
         </div>
       </div>
 
+      {/* Error message */}
+      {loadError && (
+        <Card className="border-red-500/50 bg-red-500/5">
+          <CardContent className="py-4">
+            <p className="text-red-600 text-sm">{loadError}</p>
+            {developerMode && !hookDevPath && (
+              <p className="text-muted-foreground text-sm mt-2">
+                Please configure a Dev Path in Settings &gt; Hooks to use Developer Mode.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Categories and Search on same row - Hidden in Dev Mode */}
-      {!developerMode && (
+      {!developerMode && !loadError && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Categories - Left */}
           <Card>
@@ -330,6 +405,7 @@ export function HooksTab() {
       )}
 
       {/* Hooks Grid */}
+      {!loadError && (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {(developerMode ? library : filteredHooks).map((hook) => {
           const deployed = isHookDeployed(hook);
@@ -399,6 +475,7 @@ export function HooksTab() {
           );
         })}
       </div>
+      )}
 
       {/* Hook Detail Modal */}
       {selectedHook && (
@@ -423,7 +500,7 @@ export function HooksTab() {
         />
       )}
 
-      {filteredHooks.length === 0 && (
+      {!loadError && filteredHooks.length === 0 && (
         <Card>
           <CardContent className="flex items-center justify-center py-12">
             <div className="text-center">

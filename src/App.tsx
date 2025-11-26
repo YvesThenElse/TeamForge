@@ -12,22 +12,33 @@ function App() {
     agentRepoBranch,
     agentCachePath,
     agentDevPath,
+    agentSourcePath,
     developerMode,
+    isLoaded,
+    loadSettings,
     setAgentLastSync
   } = useSettingsStore();
   const { setLibrary, setCategories } = useAgentStore();
   const { projectPath } = useProjectStore();
 
-  // Load agent library when project changes
+  // Load settings when project changes
+  useEffect(() => {
+    if (projectPath) {
+      console.log("[App] Project selected, loading settings...");
+      loadSettings(projectPath);
+    }
+  }, [projectPath, loadSettings]);
+
+  // Load agent library when project changes and settings are loaded
   useEffect(() => {
     const loadAgentLibrary = async () => {
-      if (!projectPath) {
-        console.log("[App] No project selected, skipping agent library load");
+      if (!projectPath || !isLoaded) {
+        console.log("[App] No project selected or settings not loaded, skipping agent library load");
         return;
       }
-      console.log("[App] Loading agent library... developerMode:", developerMode, "cachePath:", agentCachePath, "projectPath:", projectPath);
+      console.log("[App] Loading agent library... developerMode:", developerMode, "cachePath:", agentCachePath, "sourcePath:", agentSourcePath, "projectPath:", projectPath);
       try {
-        const result = await electron.getAgentLibrary(developerMode, agentCachePath, agentDevPath, projectPath);
+        const result = await electron.getAgentLibrary(developerMode, agentCachePath, agentDevPath, projectPath, agentSourcePath);
         setLibrary(result.agents);
         setCategories(result.categories as any);
         console.log("[App] Agent library loaded:", result.agents.length, "agents from", result.source);
@@ -37,12 +48,12 @@ function App() {
     };
 
     loadAgentLibrary();
-  }, [setLibrary, setCategories, developerMode, agentCachePath, agentDevPath, projectPath]);
+  }, [setLibrary, setCategories, developerMode, agentCachePath, agentDevPath, agentSourcePath, projectPath, isLoaded]);
 
   // Auto-sync on startup if enabled and project is selected
   useEffect(() => {
     const performAutoSync = async () => {
-      if (autoSync && agentRepoUrl && !developerMode && projectPath) {
+      if (autoSync && agentRepoUrl && !developerMode && projectPath && isLoaded) {
         console.log("[App] Auto-sync enabled, syncing agent repository...");
         try {
           const result = await electron.syncAgentRepository(agentRepoUrl, agentRepoBranch, agentCachePath, projectPath);
@@ -50,7 +61,7 @@ function App() {
             setAgentLastSync(result.timestamp);
             console.log("[App] Auto-sync completed:", result.message);
             // Reload agent library after sync
-            const libraryResult = await electron.getAgentLibrary(false, agentCachePath, undefined, projectPath);
+            const libraryResult = await electron.getAgentLibrary(false, agentCachePath, undefined, projectPath, agentSourcePath);
             setLibrary(libraryResult.agents);
             setCategories(libraryResult.categories as any);
           }
@@ -62,7 +73,7 @@ function App() {
     };
 
     performAutoSync();
-  }, [projectPath]); // Run when project changes
+  }, [projectPath, isLoaded]); // Run when project changes and settings are loaded
 
   return <MainLayout />;
 }

@@ -18,7 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   analyzeProject: (path) => ipcRenderer.invoke('project:analyze', { path }),
 
   // Agent commands
-  getAgentLibrary: (devMode, cachePath, devPath, projectPath) => ipcRenderer.invoke('agent:getLibrary', { devMode, cachePath, devPath, projectPath }),
+  getAgentLibrary: (devMode, cachePath, devPath, projectPath, sourcePath) => ipcRenderer.invoke('agent:getLibrary', { devMode, cachePath, devPath, projectPath, sourcePath }),
   getAgentsByCategory: (category) =>
     ipcRenderer.invoke('agent:getByCategory', { category }),
   searchAgents: (keyword) => ipcRenderer.invoke('agent:search', { keyword }),
@@ -30,12 +30,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSuggestedAgents: (technologies) =>
     ipcRenderer.invoke('agent:getSuggested', { technologies }),
   // Developer mode CRUD
-  createAgentTemplate: (agent) =>
-    ipcRenderer.invoke('agent:createTemplate', { agent }),
-  updateAgentTemplate: (agentId, agent) =>
-    ipcRenderer.invoke('agent:updateTemplate', { agentId, agent }),
-  deleteAgentTemplate: (agentId) =>
-    ipcRenderer.invoke('agent:deleteTemplate', { agentId }),
+  createAgentTemplate: (agent, devPath, projectPath) =>
+    ipcRenderer.invoke('agent:createTemplate', { agent, devPath, projectPath }),
+  updateAgentTemplate: (agentId, agent, devPath, projectPath) =>
+    ipcRenderer.invoke('agent:updateTemplate', { agentId, agent, devPath, projectPath }),
+  deleteAgentTemplate: (agentId, devPath, projectPath) =>
+    ipcRenderer.invoke('agent:deleteTemplate', { agentId, devPath, projectPath }),
 
   // Config commands
   loadTeamforgeConfig: (projectPath) =>
@@ -104,8 +104,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('skill:dirExists', { projectPath }),
   ensureSkillsDir: (projectPath) =>
     ipcRenderer.invoke('skill:ensureDir', { projectPath }),
-  loadTemplateSkills: (devMode) =>
-    ipcRenderer.invoke('skill:loadTemplates', { devMode }),
+  loadTemplateSkills: (devMode, cachePath, devPath, projectPath, sourcePath) =>
+    ipcRenderer.invoke('skill:loadTemplates', { devMode, cachePath, devPath, projectPath, sourcePath }),
   // Developer mode CRUD
   createSkillTemplate: (skill) =>
     ipcRenderer.invoke('skill:createTemplate', { skill }),
@@ -137,12 +137,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('agentRepo:stats', { cachePath, projectPath, sourcePath }),
   deleteAgentRepository: (cachePath, projectPath) =>
     ipcRenderer.invoke('agentRepo:delete', { cachePath, projectPath }),
-  reloadAgents: (devMode, cachePath, devPath, projectPath) =>
-    ipcRenderer.invoke('agent:reload', { devMode, cachePath, devPath, projectPath }),
+  reloadAgents: (devMode, cachePath, devPath, projectPath, sourcePath) =>
+    ipcRenderer.invoke('agent:reload', { devMode, cachePath, devPath, projectPath, sourcePath }),
 
   // Hook commands
-  loadTemplateHooks: (devMode) =>
-    ipcRenderer.invoke('hook:loadTemplates', { devMode }),
+  loadTemplateHooks: (devMode, cachePath, devPath, projectPath, sourcePath) =>
+    ipcRenderer.invoke('hook:loadTemplates', { devMode, cachePath, devPath, projectPath, sourcePath }),
   listHooks: (projectPath, settingsFileName) =>
     ipcRenderer.invoke('hook:list', { projectPath, settingsFileName }),
   deployHook: (projectPath, hook, settingsFileName) =>
@@ -160,6 +160,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('hook:updateTemplate', { hookId, hook }),
   deleteHookTemplate: (hookId) =>
     ipcRenderer.invoke('hook:deleteTemplate', { hookId }),
+
+  // TeamForge Settings commands (project-level settings.json)
+  loadTeamforgeSettings: (projectPath) =>
+    ipcRenderer.invoke('teamforgeSettings:load', { projectPath }),
+  saveTeamforgeSettings: (projectPath, settings) =>
+    ipcRenderer.invoke('teamforgeSettings:save', { projectPath, settings }),
+  teamforgeSettingsExists: (projectPath) =>
+    ipcRenderer.invoke('teamforgeSettings:exists', { projectPath }),
 
   // Claude Settings commands
   loadClaudeSettings: (projectPath, settingsFileName) =>

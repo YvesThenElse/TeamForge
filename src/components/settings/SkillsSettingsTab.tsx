@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { GitBranch, RefreshCw, Download, Trash2, FolderOpen, Folder, FileText } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { GitBranch, RefreshCw, Download, Trash2, FolderOpen, Folder, FileText, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -20,6 +20,7 @@ export function SkillsSettingsTab() {
     setSkillDevPath,
     setSkillCachePath,
     setSkillLastSync,
+    saveSettings,
   } = useSettingsStore();
   const { projectPath } = useProjectStore();
 
@@ -31,12 +32,10 @@ export function SkillsSettingsTab() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState("");
   const [repoStats, setRepoStats] = useState<{ categories: number; files: number } | null>(null);
-  const [isLoadingStats, setIsLoadingStats] = useState(false);
 
   const loadStats = useCallback(async () => {
     if (!localCachePath) return;
 
-    setIsLoadingStats(true);
     try {
       const stats = await electron.getAgentRepositoryStats(localCachePath, projectPath || undefined, localSourcePath || undefined);
       if (stats.exists) {
@@ -46,8 +45,6 @@ export function SkillsSettingsTab() {
       }
     } catch (error) {
       console.error("Failed to load stats:", error);
-    } finally {
-      setIsLoadingStats(false);
     }
   }, [projectPath, localCachePath, localSourcePath]);
 
@@ -81,6 +78,11 @@ export function SkillsSettingsTab() {
       if (result.categories !== undefined && result.files !== undefined) {
         setRepoStats({ categories: result.categories, files: result.files });
       }
+
+      // Save settings to file
+      if (projectPath) {
+        await saveSettings(projectPath);
+      }
     } catch (error: any) {
       setSyncMessage(`Error: ${error.message}`);
     } finally {
@@ -103,8 +105,11 @@ export function SkillsSettingsTab() {
     }
   };
 
-  const handleSaveSettings = () => {
+  const handleSaveSettings = async () => {
     setSkillDevPath(localDevPath);
+    if (projectPath) {
+      await saveSettings(projectPath);
+    }
     setSyncMessage("Settings saved");
     setTimeout(() => setSyncMessage(""), 3000);
   };
@@ -120,8 +125,57 @@ export function SkillsSettingsTab() {
     }
   };
 
+  // Compute the full path for display
+  const fullCachePath = useMemo(() => {
+    if (!localCachePath) return null;
+    if (localCachePath.includes(':') || localCachePath.startsWith('/')) {
+      // Absolute path
+      return localSourcePath ? `${localCachePath}/${localSourcePath}` : localCachePath;
+    }
+    // Relative path - needs project
+    if (projectPath) {
+      return localSourcePath
+        ? `${projectPath}/${localCachePath}/${localSourcePath}`.replace(/\\/g, '/')
+        : `${projectPath}/${localCachePath}`.replace(/\\/g, '/');
+    }
+    return null;
+  }, [localCachePath, localSourcePath, projectPath]);
+
+  const handleOpenFolder = async () => {
+    if (fullCachePath) {
+      try {
+        await electron.openFolder(fullCachePath.replace(/\//g, '\\'));
+      } catch (error) {
+        console.error("Failed to open folder:", error);
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Summary Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold">Skills</h2>
+          <p className="text-sm text-muted-foreground">
+            {repoStats ? (
+              <>
+                {repoStats.files} skills in {repoStats.categories} categories
+                {fullCachePath && <span className="ml-1">from <code className="text-xs bg-muted px-1 rounded">{fullCachePath}</code></span>}
+              </>
+            ) : (
+              "No repository synced"
+            )}
+          </p>
+        </div>
+        {fullCachePath && repoStats && (
+          <Button variant="outline" size="sm" onClick={handleOpenFolder}>
+            <ExternalLink className="mr-2 h-4 w-4" />
+            Open Folder
+          </Button>
+        )}
+      </div>
+
       {/* Git Repository */}
       <Card>
         <CardHeader>
@@ -224,7 +278,7 @@ export function SkillsSettingsTab() {
           )}
 
           {/* Repository Stats */}
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+          <div className="flex items-center p-3 rounded-lg bg-muted/50">
             <div className="flex gap-4">
               <div className="flex items-center gap-2">
                 <Folder className="h-4 w-4 text-muted-foreground" />
@@ -244,15 +298,6 @@ export function SkillsSettingsTab() {
                 <span className="text-xs text-amber-500">Select a project to see stats</span>
               )}
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={loadStats}
-              disabled={isLoadingStats}
-              title="Refresh stats"
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoadingStats ? 'animate-spin' : ''}`} />
-            </Button>
           </div>
         </CardContent>
       </Card>

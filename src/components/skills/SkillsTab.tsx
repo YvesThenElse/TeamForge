@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Loader2, Search, X, CheckCircle, RefreshCw, Code, Plus, FolderPlus } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Loader2, Search, X, CheckCircle, RefreshCw, Code, Plus, FolderPlus, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -13,7 +13,7 @@ import { CreateSkillModal } from "./CreateSkillModal";
 
 export function SkillsTab() {
   const { projectPath } = useProjectStore();
-  const { developerMode, setDeveloperMode } = useSettingsStore();
+  const { developerMode, setDeveloperMode, skillCachePath, skillSourcePath, skillDevPath } = useSettingsStore();
   const [library, setLibrary] = useState<Skill[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -23,13 +23,60 @@ export function SkillsTab() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [deployedSkills, setDeployedSkills] = useState<Skill[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Compute the full path for display (dev mode uses devPath, normal mode uses cachePath)
+  const fullCachePath = useMemo(() => {
+    if (developerMode) {
+      // Dev mode: use skillDevPath
+      if (!skillDevPath) return null;
+      if (skillDevPath.includes(':') || skillDevPath.startsWith('/')) {
+        return skillDevPath;
+      }
+      // Relative path - needs project
+      if (projectPath) {
+        return `${projectPath}/${skillDevPath}`.replace(/\\/g, '/');
+      }
+      return null;
+    } else {
+      // Normal mode: use skillCachePath
+      if (!skillCachePath) return null;
+      if (skillCachePath.includes(':') || skillCachePath.startsWith('/')) {
+        return skillSourcePath ? `${skillCachePath}/${skillSourcePath}` : skillCachePath;
+      }
+      // Relative path - needs project
+      if (projectPath) {
+        return skillSourcePath
+          ? `${projectPath}/${skillCachePath}/${skillSourcePath}`.replace(/\\/g, '/')
+          : `${projectPath}/${skillCachePath}`.replace(/\\/g, '/');
+      }
+      return null;
+    }
+  }, [developerMode, skillCachePath, skillDevPath, skillSourcePath, projectPath]);
+
+  const handleOpenFolder = async () => {
+    if (fullCachePath) {
+      try {
+        await electron.openFolder(fullCachePath.replace(/\//g, '\\'));
+      } catch (error) {
+        console.error("Failed to open folder:", error);
+      }
+    }
+  };
 
   // Load template skills
   const loadTemplates = async (devMode = developerMode) => {
     setLoading(true);
+    setLoadError(null);
     try {
       console.log(`[SkillsTab] Loading template skills ${devMode ? '(dev mode)' : ''}...`);
-      const templates = await electron.loadTemplateSkills(devMode);
+      const templates = await electron.loadTemplateSkills(
+        devMode,
+        skillCachePath || undefined,
+        skillDevPath || undefined,
+        projectPath || undefined,
+        skillSourcePath || undefined
+      );
       console.log("[SkillsTab] Loaded templates:", templates);
       setLibrary(templates);
 
@@ -38,22 +85,26 @@ export function SkillsTab() {
         new Set(templates.map((s) => s.category).filter(Boolean))
       ).sort() as string[];
       setCategories(uniqueCategories);
-    } catch (err) {
+    } catch (err: any) {
       console.error("[SkillsTab] Failed to load templates:", err);
+      setLoadError(err.message || "Failed to load skill library");
+      // Clear library when there's an error (especially important for dev mode)
+      setLibrary([]);
+      setCategories([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Load on mount
+  // Load on mount and when relevant settings change
   useEffect(() => {
     loadTemplates();
   }, []);
 
-  // Reload when developer mode changes
+  // Reload when developer mode or path settings change
   useEffect(() => {
     loadTemplates(developerMode);
-  }, [developerMode]);
+  }, [developerMode, projectPath, skillCachePath, skillSourcePath, skillDevPath]);
 
   // Load deployed skills when project path changes
   useEffect(() => {
@@ -183,11 +234,24 @@ export function SkillsTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Skill Library</h2>
-          <p className="text-muted-foreground mt-1">
-            {library.length} skill{library.length !== 1 ? 's' : ''} loaded from {developerMode ? 'dev templates' : 'templates'}
+          <p className="text-sm text-muted-foreground">
+            {library.length > 0 ? (
+              <>
+                {library.length} skill{library.length !== 1 ? 's' : ''} in {categories.length} categor{categories.length !== 1 ? 'ies' : 'y'}
+                {fullCachePath && <span className="ml-1">from <code className="text-xs bg-muted px-1 rounded">{fullCachePath}</code></span>}
+              </>
+            ) : (
+              "No skills loaded"
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {fullCachePath && library.length > 0 && (
+            <Button variant="outline" size="sm" onClick={handleOpenFolder}>
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Open Folder
+            </Button>
+          )}
           <Button
             onClick={handleRefresh}
             disabled={isRefreshing}
@@ -221,8 +285,22 @@ export function SkillsTab() {
         </div>
       </div>
 
+      {/* Error message */}
+      {loadError && (
+        <Card className="border-red-500/50 bg-red-500/5">
+          <CardContent className="py-4">
+            <p className="text-red-600 text-sm">{loadError}</p>
+            {developerMode && !skillDevPath && (
+              <p className="text-muted-foreground text-sm mt-2">
+                Please configure a Dev Path in Settings &gt; Skills to use Developer Mode.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Categories and Search on same row - Hidden in Dev Mode */}
-      {!developerMode && (
+      {!developerMode && !loadError && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Categories - Left */}
           <Card>
@@ -309,6 +387,7 @@ export function SkillsTab() {
       )}
 
       {/* Skills Grid */}
+      {!loadError && (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {(developerMode ? library : filteredSkills).map((skill) => {
           const deployed = isSkillDeployed(skill.id);
@@ -370,6 +449,7 @@ export function SkillsTab() {
           );
         })}
       </div>
+      )}
 
       {/* Skill Detail Modal */}
       {selectedSkill && (
@@ -391,7 +471,7 @@ export function SkillsTab() {
         />
       )}
 
-      {filteredSkills.length === 0 && (
+      {!loadError && filteredSkills.length === 0 && (
         <Card>
           <CardContent className="flex items-center justify-center py-12">
             <div className="text-center">

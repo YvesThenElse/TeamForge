@@ -52,7 +52,7 @@ export function HookDetailModal({
   // Editable fields
   const [editName, setEditName] = useState(hook.name);
   const [editDescription, setEditDescription] = useState(hook.description);
-  const [editCategory, setEditCategory] = useState(hook.category || "");
+  const [editCategory, setEditCategory] = useState<string>(hook.category || "");
   const [editEvent, setEditEvent] = useState(hook.event);
   const [editMatcher, setEditMatcher] = useState(hook.matcher);
   const [editCommand, setEditCommand] = useState(hook.command);
@@ -100,7 +100,7 @@ export function HookDetailModal({
       const updatedHook: Partial<Hook> = {
         name: editName,
         description: editDescription,
-        category: editCategory || undefined,
+        category: (editCategory || undefined) as Hook["category"] | undefined,
         event: editEvent,
         matcher: editMatcher,
         command: editCommand,

@@ -102,7 +102,7 @@ async function scanAgentDirectory(dir, category = null, baseDir = null) {
   return agents;
 }
 
-async function loadAgentLibrary(forceReload = false, devMode = false, cachePath = null, devPath = null, projectPath = null) {
+async function loadAgentLibrary(forceReload = false, devMode = false, cachePath = null, devPath = null, projectPath = null, sourcePath = null) {
   // Use separate cache for dev mode vs normal mode
   const currentCache = devMode ? agentLibraryDev : agentLibrary;
 
@@ -142,9 +142,15 @@ async function loadAgentLibrary(forceReload = false, devMode = false, cachePath 
       try {
         // Check if cache directory exists
         await fs.access(repoPath);
-        templatesDir = repoPath;
+        // Apply sourcePath if provided (subdirectory within the repo)
+        if (sourcePath) {
+          templatesDir = path.join(repoPath, sourcePath);
+          console.log('[AgentHandlers] Using sourcePath, loading from:', templatesDir);
+        } else {
+          templatesDir = repoPath;
+        }
         source = 'cache';
-        console.log('[AgentHandlers] Loading agents from cache:', repoPath);
+        console.log('[AgentHandlers] Loading agents from cache:', templatesDir);
       } catch {
         console.log('[AgentHandlers] Cache not found at:', repoPath);
         throw new Error(`Agent repository not synced. Please sync the repository first. Expected path: ${repoPath}`);
@@ -181,10 +187,10 @@ async function loadAgentLibrary(forceReload = false, devMode = false, cachePath 
 
 export function registerAgentHandlers(ipcMain) {
   // Get full agent library
-  ipcMain.handle('agent:getLibrary', async (event, { devMode = false, cachePath = null, devPath = null, projectPath = null } = {}) => {
-    console.log('[agent:getLibrary] Called with devMode:', devMode, 'cachePath:', cachePath, 'projectPath:', projectPath);
+  ipcMain.handle('agent:getLibrary', async (event, { devMode = false, cachePath = null, devPath = null, projectPath = null, sourcePath = null } = {}) => {
+    console.log('[agent:getLibrary] Called with devMode:', devMode, 'cachePath:', cachePath, 'projectPath:', projectPath, 'sourcePath:', sourcePath);
     // Always force reload to ensure we get the correct directory
-    const library = await loadAgentLibrary(true, devMode, cachePath, devPath, projectPath);
+    const library = await loadAgentLibrary(true, devMode, cachePath, devPath, projectPath, sourcePath);
     console.log('[agent:getLibrary] Returning library from:', library.loadedFrom, 'source:', library.source);
     return {
       version: library.version,
@@ -284,9 +290,9 @@ model: ${agent.model}
   });
 
   // Reload agent library (hot reload)
-  ipcMain.handle('agent:reload', async (event, { devMode = false, cachePath = null, devPath = null, projectPath = null } = {}) => {
-    console.log('[AgentHandlers] Reloading agent library... cachePath:', cachePath, 'projectPath:', projectPath);
-    const library = await loadAgentLibrary(true, devMode, cachePath, devPath, projectPath); // Force reload
+  ipcMain.handle('agent:reload', async (event, { devMode = false, cachePath = null, devPath = null, projectPath = null, sourcePath = null } = {}) => {
+    console.log('[AgentHandlers] Reloading agent library... cachePath:', cachePath, 'projectPath:', projectPath, 'sourcePath:', sourcePath);
+    const library = await loadAgentLibrary(true, devMode, cachePath, devPath, projectPath, sourcePath); // Force reload
     return {
       success: true,
       agentCount: library.agents.length,
@@ -297,13 +303,25 @@ model: ${agent.model}
 
   // ========== DEVELOPER MODE CRUD OPERATIONS ==========
 
-  // Create new agent template in agents_dev/
-  ipcMain.handle('agent:createTemplate', async (event, { agent }) => {
-    const devPath = getFallbackAgentPath(true); // agents_dev/
+  // Create new agent template in dev directory
+  ipcMain.handle('agent:createTemplate', async (event, { agent, devPath, projectPath }) => {
+    if (!devPath) {
+      throw new Error('Dev Path is not configured. Please set a Dev Path in Settings > Agents.');
+    }
+
+    // Resolve relative paths from project path
+    let resolvedDevPath = devPath;
+    if (!path.isAbsolute(devPath)) {
+      if (projectPath) {
+        resolvedDevPath = path.join(projectPath, devPath);
+      } else {
+        throw new Error('Developer mode with relative path requires a project to be selected.');
+      }
+    }
 
     // Generate filename from agent name (sanitize)
     const fileName = agent.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.md';
-    const categoryPath = path.join(devPath, agent.category || 'general');
+    const categoryPath = path.join(resolvedDevPath, agent.category || 'general');
     const fullPath = path.join(categoryPath, fileName);
 
     // Build frontmatter
@@ -330,16 +348,29 @@ ${agent.template || ''}`;
     return {
       success: true,
       path: fullPath,
+      agentId: fileName.replace('.md', ''),
       message: `Agent template created: ${fileName}`,
     };
   });
 
-  // Update existing agent template in agents_dev/
-  ipcMain.handle('agent:updateTemplate', async (event, { agentId, agent }) => {
-    const devPath = getFallbackAgentPath(true); // agents_dev/
+  // Update existing agent template in dev directory
+  ipcMain.handle('agent:updateTemplate', async (event, { agentId, agent, devPath, projectPath }) => {
+    if (!devPath) {
+      throw new Error('Dev Path is not configured. Please set a Dev Path in Settings > Agents.');
+    }
+
+    // Resolve relative paths from project path
+    let resolvedDevPath = devPath;
+    if (!path.isAbsolute(devPath)) {
+      if (projectPath) {
+        resolvedDevPath = path.join(projectPath, devPath);
+      } else {
+        throw new Error('Developer mode with relative path requires a project to be selected.');
+      }
+    }
 
     // Find the original file by scanning for the ID
-    const agents = await scanAgentDirectory(devPath);
+    const agents = await scanAgentDirectory(resolvedDevPath);
     const originalAgent = agents.find((a) => a.id === agentId);
 
     if (!originalAgent) {
@@ -347,7 +378,7 @@ ${agent.template || ''}`;
     }
 
     // Reconstruct the file path from the ID
-    const filePath = path.join(devPath, agentId.replace(/-/g, '/') + '.md');
+    const filePath = path.join(resolvedDevPath, agentId.replace(/-/g, '/') + '.md');
 
     // Build updated frontmatter
     const frontmatter = `---
@@ -374,12 +405,24 @@ ${agent.template || ''}`;
     };
   });
 
-  // Delete agent template from agents_dev/
-  ipcMain.handle('agent:deleteTemplate', async (event, { agentId }) => {
-    const devPath = getFallbackAgentPath(true); // agents_dev/
+  // Delete agent template from dev directory
+  ipcMain.handle('agent:deleteTemplate', async (event, { agentId, devPath, projectPath }) => {
+    if (!devPath) {
+      throw new Error('Dev Path is not configured. Please set a Dev Path in Settings > Agents.');
+    }
+
+    // Resolve relative paths from project path
+    let resolvedDevPath = devPath;
+    if (!path.isAbsolute(devPath)) {
+      if (projectPath) {
+        resolvedDevPath = path.join(projectPath, devPath);
+      } else {
+        throw new Error('Developer mode with relative path requires a project to be selected.');
+      }
+    }
 
     // Reconstruct the file path from the ID
-    const filePath = path.join(devPath, agentId.replace(/-/g, '/') + '.md');
+    const filePath = path.join(resolvedDevPath, agentId.replace(/-/g, '/') + '.md');
 
     // Check if file exists
     try {

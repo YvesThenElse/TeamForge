@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import { useSettingsStore } from "@/stores/settingsStore";
 import type { Agent } from "@/types";
 import * as electron from "@/services/electron";
 
@@ -28,14 +29,15 @@ export function AgentDetailModal({
   devMode = false,
   onRefresh
 }: AgentDetailModalProps) {
+  const { agentDevPath } = useSettingsStore();
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
   // Editable fields
   const [editName, setEditName] = useState(agent.name);
   const [editDescription, setEditDescription] = useState(agent.description);
-  const [editCategory, setEditCategory] = useState(agent.category);
-  const [editModel, setEditModel] = useState(agent.model || "sonnet");
+  const [editCategory, setEditCategory] = useState<string>(agent.category);
+  const [editModel, setEditModel] = useState<string>(agent.model || "sonnet");
   const [editTools, setEditTools] = useState(typeof agent.tools === "string" ? agent.tools : agent.tools?.join(", ") || "*");
   const [editTags, setEditTags] = useState(agent.tags?.join(", ") || "");
   const [editTemplate, setEditTemplate] = useState(agent.template || "");
@@ -78,15 +80,20 @@ export function AgentDetailModal({
       const updatedAgent: Partial<Agent> = {
         name: editName,
         description: editDescription,
-        category: editCategory,
-        model: editModel as any,
+        category: editCategory as Agent["category"],
+        model: editModel as Agent["model"],
         tools: editTools,
         tags: editTags ? editTags.split(",").map(t => t.trim()).filter(Boolean) : [],
         template: editTemplate,
         suggestedFor: agent.suggestedFor || [],
       };
 
-      await electron.updateAgentTemplate(agent.id, updatedAgent);
+      await electron.updateAgentTemplate(
+        agent.id,
+        updatedAgent,
+        agentDevPath || undefined,
+        projectPath || undefined
+      );
       alert(`Agent "${editName}" updated successfully!`);
       setIsEditing(false);
       if (onRefresh) onRefresh();
@@ -105,7 +112,11 @@ export function AgentDetailModal({
     }
 
     try {
-      await electron.deleteAgentTemplate(agent.id);
+      await electron.deleteAgentTemplate(
+        agent.id,
+        agentDevPath || undefined,
+        projectPath || undefined
+      );
       alert(`Agent template "${agent.name}" deleted successfully!`);
       if (onRefresh) onRefresh();
       onClose();

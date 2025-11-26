@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { FolderPlus, Loader2, RefreshCw, Search, X, CheckCircle, Plus, Code } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { FolderPlus, Loader2, RefreshCw, Search, X, CheckCircle, Plus, Code, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -16,24 +16,64 @@ import type { AgentFile } from "@/types/agentFile";
 export function ConfigureAgentTab() {
   const { library, categories, setLibrary, setCategories, isLoading, setIsLoading } = useAgentStore();
   const { projectPath } = useProjectStore();
-  const { developerMode, setDeveloperMode } = useSettingsStore();
+  const { developerMode, setDeveloperMode, agentCachePath, agentDevPath, agentSourcePath } = useSettingsStore();
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [agentSource, setAgentSource] = useState<string>("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [deployedAgents, setDeployedAgents] = useState<AgentFile[]>([]);
 
   // Load agent library
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Compute the full path for display (dev mode uses devPath, normal mode uses cachePath)
+  const fullCachePath = useMemo(() => {
+    if (developerMode) {
+      // Dev mode: use agentDevPath
+      if (!agentDevPath) return null;
+      if (agentDevPath.includes(':') || agentDevPath.startsWith('/')) {
+        return agentDevPath;
+      }
+      // Relative path - needs project
+      if (projectPath) {
+        return `${projectPath}/${agentDevPath}`.replace(/\\/g, '/');
+      }
+      return null;
+    } else {
+      // Normal mode: use agentCachePath
+      if (!agentCachePath) return null;
+      if (agentCachePath.includes(':') || agentCachePath.startsWith('/')) {
+        return agentSourcePath ? `${agentCachePath}/${agentSourcePath}` : agentCachePath;
+      }
+      // Relative path - needs project
+      if (projectPath) {
+        return agentSourcePath
+          ? `${projectPath}/${agentCachePath}/${agentSourcePath}`.replace(/\\/g, '/')
+          : `${projectPath}/${agentCachePath}`.replace(/\\/g, '/');
+      }
+      return null;
+    }
+  }, [developerMode, agentCachePath, agentDevPath, agentSourcePath, projectPath]);
+
+  const handleOpenFolder = async () => {
+    if (fullCachePath) {
+      try {
+        await electron.openFolder(fullCachePath.replace(/\//g, '\\'));
+      } catch (error) {
+        console.error("Failed to open folder:", error);
+      }
+    }
+  };
+
   const loadAgentLibrary = async (devMode = developerMode) => {
     setIsLoading(true);
+    setLoadError(null);
     try {
-      console.log(`[ConfigureAgentTab] Loading agent library ${devMode ? '(dev mode)' : ''}...`);
-      const libraryData = await electron.getAgentLibrary(devMode);
+      console.log(`[ConfigureAgentTab] Loading agent library ${devMode ? '(dev mode)' : ''}... cachePath:`, agentCachePath, 'sourcePath:', agentSourcePath, 'projectPath:', projectPath);
+      const libraryData = await electron.getAgentLibrary(devMode, agentCachePath, agentDevPath, projectPath || undefined, agentSourcePath);
       console.log("[ConfigureAgentTab] Loaded library:", libraryData);
       setLibrary(libraryData.agents);
-      setAgentSource(libraryData.source || "unknown");
 
       // Extract unique categories from agents
       const uniqueCategories = Array.from(
@@ -41,22 +81,23 @@ export function ConfigureAgentTab() {
       ).sort();
       console.log("[ConfigureAgentTab] Categories:", uniqueCategories);
       setCategories(uniqueCategories as any);
-    } catch (err) {
+    } catch (err: any) {
       console.error("[ConfigureAgentTab] Failed to load agent library:", err);
+      setLoadError(err.message || "Failed to load agent library");
+      // Clear library when there's an error (especially important for dev mode)
+      setLibrary([]);
+      setCategories([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Load on mount
+  // Load on mount and when settings change
   useEffect(() => {
-    loadAgentLibrary();
-  }, []);
-
-  // Reload when developer mode changes
-  useEffect(() => {
-    loadAgentLibrary(developerMode);
-  }, [developerMode]);
+    if (projectPath) {
+      loadAgentLibrary();
+    }
+  }, [developerMode, agentCachePath, agentSourcePath, projectPath]);
 
   // Load deployed agents when project path changes
   useEffect(() => {
@@ -83,7 +124,7 @@ export function ConfigureAgentTab() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await electron.reloadAgents(developerMode);
+      await electron.reloadAgents(developerMode, agentCachePath, agentDevPath, projectPath || undefined, agentSourcePath);
       await loadAgentLibrary(developerMode);
     } catch (err) {
       console.error("[ConfigureAgentTab] Failed to refresh agents:", err);
@@ -174,18 +215,24 @@ export function ConfigureAgentTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Agent Library</h2>
-          <p className="text-muted-foreground mt-1">
-            {library.length} agent{library.length !== 1 ? 's' : ''} loaded
-            {agentSource && (
-              <span className="ml-1">
-                from <span className="font-medium">
-                  {agentSource === 'git' ? 'Git repository' : agentSource === 'dev' ? 'dev templates' : 'local templates'}
-                </span>
-              </span>
+          <p className="text-sm text-muted-foreground">
+            {library.length > 0 ? (
+              <>
+                {library.length} agent{library.length !== 1 ? 's' : ''} in {categories.length} categor{categories.length !== 1 ? 'ies' : 'y'}
+                {fullCachePath && <span className="ml-1">from <code className="text-xs bg-muted px-1 rounded">{fullCachePath}</code></span>}
+              </>
+            ) : (
+              "No agents loaded"
             )}
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {fullCachePath && library.length > 0 && (
+            <Button variant="outline" size="sm" onClick={handleOpenFolder}>
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Open Folder
+            </Button>
+          )}
           <Button
             onClick={handleRefresh}
             disabled={isRefreshing}
@@ -219,8 +266,22 @@ export function ConfigureAgentTab() {
         </div>
       </div>
 
+      {/* Error message */}
+      {loadError && (
+        <Card className="border-red-500/50 bg-red-500/5">
+          <CardContent className="py-4">
+            <p className="text-red-600 text-sm">{loadError}</p>
+            {developerMode && !agentDevPath && (
+              <p className="text-muted-foreground text-sm mt-2">
+                Please configure a Dev Path in Settings &gt; Agents to use Developer Mode.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Categories and Search on same row - Hidden in Dev Mode */}
-      {!developerMode && (
+      {!developerMode && !loadError && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Categories - Left */}
           <Card>
@@ -307,6 +368,7 @@ export function ConfigureAgentTab() {
       )}
 
       {/* Agents Grid */}
+      {!loadError && (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {(developerMode ? library : filteredAgents).map((agent) => {
           const deployed = isAgentDeployed(agent.id);
@@ -359,6 +421,7 @@ export function ConfigureAgentTab() {
           );
         })}
       </div>
+      )}
 
       {/* Agent Detail Modal */}
       {selectedAgent && (
@@ -380,7 +443,7 @@ export function ConfigureAgentTab() {
         />
       )}
 
-      {filteredAgents.length === 0 && (
+      {!loadError && filteredAgents.length === 0 && !developerMode && (
         <Card>
           <CardContent className="flex items-center justify-center py-12">
             <div className="text-center">
