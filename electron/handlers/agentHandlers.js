@@ -153,7 +153,20 @@ async function loadAgentLibrary(forceReload = false, devMode = false, cachePath 
         console.log('[AgentHandlers] Loading agents from cache:', templatesDir);
       } catch {
         console.log('[AgentHandlers] Cache not found at:', repoPath);
-        throw new Error(`Agent repository not synced. Please sync the repository first. Expected path: ${repoPath}`);
+        // Return empty library instead of throwing error (consistent with Skills and Hooks)
+        const emptyLibrary = {
+          version: '2.0.0',
+          agents: [],
+          categories: [],
+          source: 'none',
+          loadedFrom: null,
+        };
+        if (devMode) {
+          agentLibraryDev = emptyLibrary;
+        } else {
+          agentLibrary = emptyLibrary;
+        }
+        return emptyLibrary;
       }
     }
 

@@ -26,6 +26,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    fullscreen: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -36,7 +37,7 @@ function createWindow() {
   // Load from Vite dev server in development, or from built files in production
   if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
     mainWindow.loadURL('http://localhost:1420');
-    mainWindow.webContents.openDevTools();
+    // Developer tools can be accessed via menu (not open by default)
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
