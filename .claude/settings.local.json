@@ -20,7 +20,8 @@
       "Bash(for dir in */)",
       "Bash(do mv \"$dir/instructions.md\" \"$dir/SKILL.md\")",
       "WebSearch",
-      "WebFetch(domain:reactflow.dev)"
+      "WebFetch(domain:reactflow.dev)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []

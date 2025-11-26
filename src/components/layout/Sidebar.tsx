@@ -48,7 +48,7 @@ export function Sidebar({ currentStep, onStepChange, hasProjectSelected = false 
     },
     {
       id: "settings" as const,
-      label: "App Settings",
+      label: "Settings",
       icon: Wrench,
       description: "TeamForge config",
     },

@@ -10,17 +10,15 @@ const __dirname = path.dirname(__filename);
 let agentLibrary = null;
 let agentLibraryDev = null;
 
-// Get path to agent repository
-function getAgentRepoPath() {
+// Default cache path for agent repository
+function getDefaultCachePath() {
   const homeDir = os.homedir();
-  return path.join(homeDir, '.teamforge', 'agent-templates');
+  return path.join(homeDir, '.teamforge', 'cache', 'agents');
 }
 
-// Fallback to local agents_template if Git repo doesn't exist
-function getFallbackAgentPath(devMode = false) {
-  // __dirname is electron/handlers/, so go up two levels to project root
-  const dirName = devMode ? 'agents_dev' : 'agents_template';
-  return path.join(__dirname, '..', '..', dirName);
+// Get dev path for local development
+function getDevPath(devPath = null) {
+  return devPath || null;
 }
 
 function parseFrontmatter(content) {
@@ -104,31 +102,53 @@ async function scanAgentDirectory(dir, category = null, baseDir = null) {
   return agents;
 }
 
-async function loadAgentLibrary(forceReload = false, devMode = false) {
+async function loadAgentLibrary(forceReload = false, devMode = false, cachePath = null, devPath = null, projectPath = null) {
   // Use separate cache for dev mode vs normal mode
   const currentCache = devMode ? agentLibraryDev : agentLibrary;
 
   if (!currentCache || forceReload) {
-    // In dev mode, only use local _dev directory (no Git repo)
-    const fallbackPath = getFallbackAgentPath(devMode);
+    let templatesDir;
+    let source;
 
-    let templatesDir = fallbackPath;
-    let source = devMode ? 'dev' : 'local';
-
-    // Only try Git repo if NOT in dev mode
-    if (!devMode) {
-      const gitRepoPath = getAgentRepoPath();
-      try {
-        // Check if Git repo exists
-        await fs.access(gitRepoPath);
-        templatesDir = gitRepoPath;
-        source = 'git';
-        console.log('[AgentHandlers] Loading agents from Git repository:', gitRepoPath);
-      } catch {
-        console.log('[AgentHandlers] Git repository not found, using local fallback:', fallbackPath);
+    if (devMode) {
+      // In dev mode, use the dev path
+      let resolvedDevPath = getDevPath(devPath);
+      if (!resolvedDevPath) {
+        throw new Error('Developer mode is enabled but no Dev Path is configured. Please set a Dev Path in Settings > Agents.');
       }
+      // Resolve relative paths from project path
+      if (!path.isAbsolute(resolvedDevPath)) {
+        if (projectPath) {
+          resolvedDevPath = path.join(projectPath, resolvedDevPath);
+        } else {
+          throw new Error('Developer mode with relative path requires a project to be selected.');
+        }
+      }
+      templatesDir = resolvedDevPath;
+      source = 'dev';
+      console.log('[AgentHandlers] Developer mode: Loading agents from:', templatesDir);
     } else {
-      console.log('[AgentHandlers] Developer mode: Loading agents from:', fallbackPath);
+      // Use cache path (from settings or default)
+      let repoPath = cachePath || getDefaultCachePath();
+      // Resolve relative paths from project path
+      if (repoPath && !path.isAbsolute(repoPath)) {
+        if (projectPath) {
+          repoPath = path.join(projectPath, repoPath);
+        } else {
+          // Fallback to home directory if no project selected
+          repoPath = path.join(os.homedir(), repoPath);
+        }
+      }
+      try {
+        // Check if cache directory exists
+        await fs.access(repoPath);
+        templatesDir = repoPath;
+        source = 'cache';
+        console.log('[AgentHandlers] Loading agents from cache:', repoPath);
+      } catch {
+        console.log('[AgentHandlers] Cache not found at:', repoPath);
+        throw new Error(`Agent repository not synced. Please sync the repository first. Expected path: ${repoPath}`);
+      }
     }
 
     const agents = await scanAgentDirectory(templatesDir);
@@ -161,10 +181,10 @@ async function loadAgentLibrary(forceReload = false, devMode = false) {
 
 export function registerAgentHandlers(ipcMain) {
   // Get full agent library
-  ipcMain.handle('agent:getLibrary', async (event, { devMode = false } = {}) => {
-    console.log('[agent:getLibrary] Called with devMode:', devMode);
+  ipcMain.handle('agent:getLibrary', async (event, { devMode = false, cachePath = null, devPath = null, projectPath = null } = {}) => {
+    console.log('[agent:getLibrary] Called with devMode:', devMode, 'cachePath:', cachePath, 'projectPath:', projectPath);
     // Always force reload to ensure we get the correct directory
-    const library = await loadAgentLibrary(true, devMode);
+    const library = await loadAgentLibrary(true, devMode, cachePath, devPath, projectPath);
     console.log('[agent:getLibrary] Returning library from:', library.loadedFrom, 'source:', library.source);
     return {
       version: library.version,
@@ -264,9 +284,9 @@ model: ${agent.model}
   });
 
   // Reload agent library (hot reload)
-  ipcMain.handle('agent:reload', async (event, { devMode = false } = {}) => {
-    console.log('[AgentHandlers] Reloading agent library...');
-    const library = await loadAgentLibrary(true, devMode); // Force reload
+  ipcMain.handle('agent:reload', async (event, { devMode = false, cachePath = null, devPath = null, projectPath = null } = {}) => {
+    console.log('[AgentHandlers] Reloading agent library... cachePath:', cachePath, 'projectPath:', projectPath);
+    const library = await loadAgentLibrary(true, devMode, cachePath, devPath, projectPath); // Force reload
     return {
       success: true,
       agentCount: library.agents.length,

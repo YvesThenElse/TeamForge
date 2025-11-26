@@ -18,7 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   analyzeProject: (path) => ipcRenderer.invoke('project:analyze', { path }),
 
   // Agent commands
-  getAgentLibrary: (devMode) => ipcRenderer.invoke('agent:getLibrary', { devMode }),
+  getAgentLibrary: (devMode, cachePath, devPath, projectPath) => ipcRenderer.invoke('agent:getLibrary', { devMode, cachePath, devPath, projectPath }),
   getAgentsByCategory: (category) =>
     ipcRenderer.invoke('agent:getByCategory', { category }),
   searchAgents: (keyword) => ipcRenderer.invoke('agent:search', { keyword }),
@@ -127,16 +127,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('team:deploy', { projectPath, team, agentLibrary }),
 
   // Agent Repository commands
-  syncAgentRepository: (repoUrl, branch) =>
-    ipcRenderer.invoke('agentRepo:sync', { repoUrl, branch }),
+  syncAgentRepository: (repoUrl, branch, cachePath, projectPath, sourcePath) =>
+    ipcRenderer.invoke('agentRepo:sync', { repoUrl, branch, cachePath, projectPath, sourcePath }),
   getAgentRepositoryPath: () =>
     ipcRenderer.invoke('agentRepo:getPath'),
   getAgentRepositoryStatus: () =>
     ipcRenderer.invoke('agentRepo:status'),
-  deleteAgentRepository: () =>
-    ipcRenderer.invoke('agentRepo:delete'),
-  reloadAgents: (devMode) =>
-    ipcRenderer.invoke('agent:reload', { devMode }),
+  getAgentRepositoryStats: (cachePath, projectPath, sourcePath) =>
+    ipcRenderer.invoke('agentRepo:stats', { cachePath, projectPath, sourcePath }),
+  deleteAgentRepository: (cachePath, projectPath) =>
+    ipcRenderer.invoke('agentRepo:delete', { cachePath, projectPath }),
+  reloadAgents: (devMode, cachePath, devPath, projectPath) =>
+    ipcRenderer.invoke('agent:reload', { devMode, cachePath, devPath, projectPath }),
 
   // Hook commands
   loadTemplateHooks: (devMode) =>

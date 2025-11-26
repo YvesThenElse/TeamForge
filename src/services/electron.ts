@@ -36,7 +36,7 @@ declare global {
       analyzeProject: (path: string) => Promise<ProjectAnalysis>;
 
       // Agent commands
-      getAgentLibrary: () => Promise<AgentLibraryResponse>;
+      getAgentLibrary: (devMode?: boolean, cachePath?: string, devPath?: string, projectPath?: string) => Promise<AgentLibraryResponse>;
       getAgentsByCategory: (category: string) => Promise<Agent[]>;
       searchAgents: (keyword: string) => Promise<Agent[]>;
       getAgentById: (id: string) => Promise<Agent | null>;
@@ -105,13 +105,22 @@ declare global {
       ) => Promise<string>;
 
       // Agent Repository commands
-      syncAgentRepository: (repoUrl: string, branch: string) => Promise<{
+      syncAgentRepository: (repoUrl: string, branch: string, cachePath?: string, projectPath?: string, sourcePath?: string) => Promise<{
         success: boolean;
         path: string;
         message: string;
         timestamp: string;
+        categories?: number;
+        files?: number;
       }>;
       getAgentRepositoryPath: () => Promise<string>;
+      getAgentRepositoryStats: (cachePath?: string, projectPath?: string, sourcePath?: string) => Promise<{
+        exists: boolean;
+        path?: string;
+        categories: number;
+        files: number;
+        error?: string;
+      }>;
       getAgentRepositoryStatus: () => Promise<{
         exists: boolean;
         isRepo?: boolean;
@@ -123,8 +132,8 @@ declare global {
         message?: string;
         error?: string;
       }>;
-      deleteAgentRepository: () => Promise<{ success: boolean; message: string }>;
-      reloadAgents: () => Promise<{
+      deleteAgentRepository: (cachePath?: string, projectPath?: string) => Promise<{ success: boolean; message: string; path?: string }>;
+      reloadAgents: (devMode?: boolean, cachePath?: string, devPath?: string, projectPath?: string) => Promise<{
         success: boolean;
         agentCount: number;
         source: string;
@@ -262,8 +271,8 @@ export interface AgentLibraryResponse {
   loadedFrom?: string; // Path to loaded directory
 }
 
-export async function getAgentLibrary(devMode?: boolean): Promise<AgentLibraryResponse> {
-  return window.electronAPI.getAgentLibrary(devMode);
+export async function getAgentLibrary(devMode?: boolean, cachePath?: string, devPath?: string, projectPath?: string): Promise<AgentLibraryResponse> {
+  return window.electronAPI.getAgentLibrary(devMode, cachePath, devPath, projectPath);
 }
 
 export async function getAgentsByCategory(
@@ -545,24 +554,28 @@ export async function deployTeam(
 // Agent Repository Commands
 // ============================================================================
 
-export async function syncAgentRepository(repoUrl: string, branch: string = 'main') {
-  return window.electronAPI.syncAgentRepository(repoUrl, branch);
+export async function syncAgentRepository(repoUrl: string, branch: string = 'main', cachePath?: string, projectPath?: string, sourcePath?: string) {
+  return window.electronAPI.syncAgentRepository(repoUrl, branch, cachePath, projectPath, sourcePath);
 }
 
 export async function getAgentRepositoryPath(): Promise<string> {
   return window.electronAPI.getAgentRepositoryPath();
 }
 
+export async function getAgentRepositoryStats(cachePath?: string, projectPath?: string, sourcePath?: string) {
+  return window.electronAPI.getAgentRepositoryStats(cachePath, projectPath, sourcePath);
+}
+
 export async function getAgentRepositoryStatus() {
   return window.electronAPI.getAgentRepositoryStatus();
 }
 
-export async function deleteAgentRepository() {
-  return window.electronAPI.deleteAgentRepository();
+export async function deleteAgentRepository(cachePath?: string, projectPath?: string) {
+  return window.electronAPI.deleteAgentRepository(cachePath, projectPath);
 }
 
-export async function reloadAgents(devMode?: boolean) {
-  return window.electronAPI.reloadAgents(devMode);
+export async function reloadAgents(devMode?: boolean, cachePath?: string, devPath?: string, projectPath?: string) {
+  return window.electronAPI.reloadAgents(devMode, cachePath, devPath, projectPath);
 }
 
 // ============================================================================
