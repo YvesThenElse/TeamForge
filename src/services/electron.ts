@@ -147,13 +147,37 @@ declare global {
       // Team commands
       listTeams: (projectPath: string) => Promise<Team[]>;
       loadTeam: (projectPath: string, teamId: string) => Promise<Team>;
-      saveTeam: (projectPath: string, team: Team) => Promise<string>;
-      deleteTeam: (projectPath: string, teamId: string) => Promise<string>;
+      saveTeam: (projectPath: string, team: Team) => Promise<{
+        success: boolean;
+        teamId: string;
+        message: string;
+      }>;
+      deleteTeam: (projectPath: string, teamId: string) => Promise<{
+        success: boolean;
+        message: string;
+      }>;
       deployTeam: (
         projectPath: string,
-        team: Team,
+        teamId: string
+      ) => Promise<{
+        success: boolean;
+        message: string;
+        teamId: string;
+      }>;
+      getDeployedTeam: (projectPath: string) => Promise<{
+        teamId: string;
+        teamName: string;
+        deployedAt: string | null;
+      } | null>;
+      generateTeamAgents: (
+        projectPath: string,
+        teamId: string,
         agentLibrary: Agent[]
-      ) => Promise<string>;
+      ) => Promise<{
+        success: boolean;
+        filesGenerated: number;
+        files: string[];
+      }>;
 
       // Agent Repository commands
       syncAgentRepository: (repoUrl: string, branch: string, cachePath?: string, projectPath?: string, sourcePath?: string) => Promise<{
@@ -618,23 +642,36 @@ export async function loadTeam(
 export async function saveTeam(
   projectPath: string,
   team: Team
-): Promise<string> {
+): Promise<{ success: boolean; teamId: string; message: string }> {
   return window.electronAPI.saveTeam(projectPath, team);
 }
 
 export async function deleteTeam(
   projectPath: string,
   teamId: string
-): Promise<string> {
+): Promise<{ success: boolean; message: string }> {
   return window.electronAPI.deleteTeam(projectPath, teamId);
 }
 
 export async function deployTeam(
   projectPath: string,
-  team: Team,
+  teamId: string
+): Promise<{ success: boolean; message: string; teamId: string }> {
+  return window.electronAPI.deployTeam(projectPath, teamId);
+}
+
+export async function getDeployedTeam(
+  projectPath: string
+): Promise<{ teamId: string; teamName: string; deployedAt: string | null } | null> {
+  return window.electronAPI.getDeployedTeam(projectPath);
+}
+
+export async function generateTeamAgents(
+  projectPath: string,
+  teamId: string,
   agentLibrary: Agent[]
-): Promise<string> {
-  return window.electronAPI.deployTeam(projectPath, team, agentLibrary);
+): Promise<{ success: boolean; filesGenerated: number; files: string[] }> {
+  return window.electronAPI.generateTeamAgents(projectPath, teamId, agentLibrary);
 }
 
 // ============================================================================

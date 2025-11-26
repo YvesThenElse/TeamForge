@@ -20,7 +20,7 @@ import { AgentDetailsDialog } from "./AgentDetailsDialog";
 import { useTeamStore } from "@/stores/teamStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useAgentStore } from "@/stores/agentStore";
-import { saveTeam, deployTeam, listAgentFiles } from "@/services/electron";
+import { saveTeam, deployTeam, generateTeamAgents, getDeployedTeam, listAgentFiles } from "@/services/electron";
 import type { Team } from "@/types/team";
 import type { AgentFile } from "@/types/agentFile";
 import type { Agent } from "@/types";
@@ -208,12 +208,43 @@ export function TeamWorkflowEditor({ onClose }: TeamWorkflowEditorProps) {
   const handleDeploy = async () => {
     if (!projectPath || !currentTeam) return;
 
+    if (!teamName.trim()) {
+      alert("Please enter a team name");
+      return;
+    }
+
+    if (workflow.length === 0) {
+      alert("Please add at least one agent to the workflow before deploying");
+      return;
+    }
+
     try {
-      const message = await deployTeam(projectPath, currentTeam, library);
-      alert(message);
+      // First, save the team with all current data
+      const updatedTeam: Team = {
+        ...currentTeam,
+        name: teamName,
+        description: teamDescription,
+        workflow,
+      };
+
+      const saveResult = await saveTeam(projectPath, updatedTeam);
+      const teamId = saveResult.teamId;
+
+      // Generate agent files in the team directory
+      const genResult = await generateTeamAgents(projectPath, teamId, library);
+      console.log(`Generated ${genResult.filesGenerated} agent files:`, genResult.files);
+
+      // Deploy the team to .claude/ directory
+      const deployResult = await deployTeam(projectPath, teamId);
+
+      // Update deployed team status
+      const deployed = await getDeployedTeam(projectPath);
+      useTeamStore.getState().setDeployedTeam(deployed);
+
+      alert(`${deployResult.message}\n\nGenerated ${genResult.filesGenerated} agent files.\n\nYou can now use this team in Claude Code!`);
     } catch (error) {
       console.error("Failed to deploy team:", error);
-      alert("Failed to deploy team");
+      alert(`Failed to deploy team: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 

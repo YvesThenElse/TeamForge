@@ -123,8 +123,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('team:save', { projectPath, team }),
   deleteTeam: (projectPath, teamId) =>
     ipcRenderer.invoke('team:delete', { projectPath, teamId }),
-  deployTeam: (projectPath, team, agentLibrary) =>
-    ipcRenderer.invoke('team:deploy', { projectPath, team, agentLibrary }),
+  deployTeam: (projectPath, teamId) =>
+    ipcRenderer.invoke('team:deploy', { projectPath, teamId }),
+  getDeployedTeam: (projectPath) =>
+    ipcRenderer.invoke('team:getDeployed', { projectPath }),
+  generateTeamAgents: (projectPath, teamId, agentLibrary) =>
+    ipcRenderer.invoke('team:generateAgents', { projectPath, teamId, agentLibrary }),
 
   // Agent Repository commands
   syncAgentRepository: (repoUrl, branch, cachePath, projectPath, sourcePath) =>

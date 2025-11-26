@@ -1,14 +1,22 @@
 import { create } from "zustand";
 import { Team, TeamWorkflowNode } from "@/types/team";
 
+interface DeployedTeam {
+  teamId: string;
+  teamName: string;
+  deployedAt: string | null;
+}
+
 interface TeamState {
   teams: Team[];
   currentTeam: Team | null;
+  deployedTeam: DeployedTeam | null;
   isLoading: boolean;
 
   // Actions
   setTeams: (teams: Team[]) => void;
   setCurrentTeam: (team: Team | null) => void;
+  setDeployedTeam: (deployed: DeployedTeam | null) => void;
   createTeam: (name: string, description: string) => Team;
   updateTeam: (teamId: string, updates: Partial<Team>) => void;
   deleteTeam: (teamId: string) => void;
@@ -29,11 +37,14 @@ interface TeamState {
 export const useTeamStore = create<TeamState>((set, get) => ({
   teams: [],
   currentTeam: null,
+  deployedTeam: null,
   isLoading: false,
 
   setTeams: (teams) => set({ teams }),
 
   setCurrentTeam: (team) => set({ currentTeam: team }),
+
+  setDeployedTeam: (deployed) => set({ deployedTeam: deployed }),
 
   createTeam: (name, description) => {
     const newTeam: Team = {

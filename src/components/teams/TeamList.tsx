@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Plus, Users, ArrowRight, Trash2, Edit } from "lucide-react";
+import { Plus, Users, ArrowRight, Trash2, Edit, Rocket, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
 import { useTeamStore } from "@/stores/teamStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useAgentStore } from "@/stores/agentStore";
-import { listTeams, deleteTeam as deleteTeamAPI } from "@/services/electron";
+import { listTeams, deleteTeam as deleteTeamAPI, getDeployedTeam, deployTeam, generateTeamAgents } from "@/services/electron";
 import type { Team } from "@/types/team";
 
 interface TeamListProps {
@@ -14,13 +15,15 @@ interface TeamListProps {
 }
 
 export function TeamList({ onEditTeam, onCreateTeam }: TeamListProps) {
-  const { teams, setTeams, setCurrentTeam } = useTeamStore();
+  const { teams, setTeams, setCurrentTeam, deployedTeam, setDeployedTeam } = useTeamStore();
   const { projectPath } = useProjectStore();
   const { library } = useAgentStore();
   const [isLoading, setIsLoading] = useState(true);
+  const [deployingTeamId, setDeployingTeamId] = useState<string | null>(null);
 
   useEffect(() => {
     loadTeams();
+    loadDeployedTeam();
   }, [projectPath]);
 
   const loadTeams = async () => {
@@ -37,8 +40,25 @@ export function TeamList({ onEditTeam, onCreateTeam }: TeamListProps) {
     }
   };
 
+  const loadDeployedTeam = async () => {
+    if (!projectPath) return;
+
+    try {
+      const deployed = await getDeployedTeam(projectPath);
+      setDeployedTeam(deployed);
+    } catch (error) {
+      console.error("Failed to load deployed team:", error);
+    }
+  };
+
   const handleDeleteTeam = async (teamId: string) => {
     if (!projectPath) return;
+
+    if (deployedTeam?.teamId === teamId) {
+      alert("Cannot delete the currently deployed team. Please deploy another team first.");
+      return;
+    }
+
     if (!confirm("Are you sure you want to delete this team?")) return;
 
     try {
@@ -53,6 +73,41 @@ export function TeamList({ onEditTeam, onCreateTeam }: TeamListProps) {
   const handleSelectTeam = (team: Team) => {
     setCurrentTeam(team);
     onEditTeam(team);
+  };
+
+  const handleDeployTeam = async (team: Team) => {
+    if (!projectPath) return;
+
+    if (team.workflow.length === 0) {
+      alert("This team has no agents. Please edit the team and add agents before deploying.");
+      return;
+    }
+
+    if (!confirm(`Deploy "${team.name}" to .claude/ directory?\n\nThis will replace your current Claude Code configuration.`)) {
+      return;
+    }
+
+    setDeployingTeamId(team.id);
+
+    try {
+      // Generate agent files
+      const genResult = await generateTeamAgents(projectPath, team.id, library);
+      console.log(`Generated ${genResult.filesGenerated} agent files`);
+
+      // Deploy the team
+      const deployResult = await deployTeam(projectPath, team.id);
+
+      // Reload deployed team status
+      const deployed = await getDeployedTeam(projectPath);
+      setDeployedTeam(deployed);
+
+      alert(`${deployResult.message}\n\nGenerated ${genResult.filesGenerated} agent files.\n\nYou can now use this team in Claude Code!`);
+    } catch (error) {
+      console.error("Failed to deploy team:", error);
+      alert(`Failed to deploy team: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setDeployingTeamId(null);
+    }
   };
 
   const getAgentName = (agentId: string) => {
@@ -102,62 +157,101 @@ export function TeamList({ onEditTeam, onCreateTeam }: TeamListProps) {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {teams.map((team) => (
-            <Card key={team.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle>{team.name}</CardTitle>
-                    <CardDescription>{team.description}</CardDescription>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleSelectTeam(team)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteTeam(team.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="text-sm font-medium">
-                    {team.workflow.length} Agent{team.workflow.length !== 1 ? "s" : ""}
-                  </div>
-                  {team.chainingEnabled && team.workflow.length > 0 && (
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground mb-2">
-                        Workflow Chain:
+          {teams.map((team) => {
+            const isDeployed = deployedTeam?.teamId === team.id;
+            const isDeploying = deployingTeamId === team.id;
+
+            return (
+              <Card key={team.id} className={`hover:shadow-md transition-shadow ${isDeployed ? 'border-green-500 border-2' : ''}`}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <CardTitle>{team.name}</CardTitle>
+                        {isDeployed && (
+                          <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Deployed
+                          </Badge>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {team.workflow
-                          .sort((a, b) => a.order - b.order)
-                          .map((node, index) => (
-                            <div key={node.agentId} className="flex items-center gap-2">
-                              <span className="px-2 py-1 bg-primary text-primary-foreground rounded text-xs">
-                                {getAgentName(node.agentId)}
-                              </span>
-                              {index < team.workflow.length - 1 && (
-                                <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                              )}
-                            </div>
-                          ))}
-                      </div>
+                      <CardDescription>{team.description}</CardDescription>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleSelectTeam(team)}
+                        title="Edit team"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteTeam(team.id)}
+                        title="Delete team"
+                        disabled={isDeployed}
+                      >
+                        <Trash2 className={`h-4 w-4 ${isDeployed ? 'text-muted-foreground' : 'text-destructive'}`} />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="text-sm font-medium">
+                      {team.workflow.length} Agent{team.workflow.length !== 1 ? "s" : ""}
+                    </div>
+                    {team.chainingEnabled && team.workflow.length > 0 && (
+                      <div>
+                        <div className="text-sm font-medium text-muted-foreground mb-2">
+                          Workflow Chain:
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {team.workflow
+                            .sort((a, b) => a.order - b.order)
+                            .map((node, index) => (
+                              <div key={node.agentId} className="flex items-center gap-2">
+                                <span className="px-2 py-1 bg-primary text-primary-foreground rounded text-xs">
+                                  {getAgentName(node.agentId)}
+                                </span>
+                                {index < team.workflow.length - 1 && (
+                                  <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                )}
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="pt-2">
+                      <Button
+                        onClick={() => handleDeployTeam(team)}
+                        disabled={isDeploying || isDeployed || team.workflow.length === 0}
+                        size="sm"
+                        className="w-full"
+                        variant={isDeployed ? "outline" : "default"}
+                      >
+                        {isDeploying ? (
+                          <>Deploying...</>
+                        ) : isDeployed ? (
+                          <>
+                            <CheckCircle2 className="mr-2 h-4 w-4" />
+                            Already Deployed
+                          </>
+                        ) : (
+                          <>
+                            <Rocket className="mr-2 h-4 w-4" />
+                            Deploy Team
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
