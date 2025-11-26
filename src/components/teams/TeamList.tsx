@@ -78,7 +78,12 @@ export function TeamList({ onEditTeam, onCreateTeam }: TeamListProps) {
   const handleDeployTeam = async (team: Team) => {
     if (!projectPath) return;
 
-    if (team.workflow.length === 0) {
+    // Check both old workflow and new agents structure
+    const hasElements =
+      (team.agents && team.agents.length > 0) ||
+      (team.workflow && team.workflow.length > 0);
+
+    if (!hasElements) {
       alert("This team has no agents. Please edit the team and add agents before deploying.");
       return;
     }
@@ -200,34 +205,51 @@ export function TeamList({ onEditTeam, onCreateTeam }: TeamListProps) {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    <div className="text-sm font-medium">
-                      {team.workflow.length} Agent{team.workflow.length !== 1 ? "s" : ""}
-                    </div>
-                    {team.chainingEnabled && team.workflow.length > 0 && (
-                      <div>
-                        <div className="text-sm font-medium text-muted-foreground mb-2">
-                          Workflow Chain:
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {team.workflow
-                            .sort((a, b) => a.order - b.order)
-                            .map((node, index) => (
-                              <div key={node.agentId} className="flex items-center gap-2">
-                                <span className="px-2 py-1 bg-primary text-primary-foreground rounded text-xs">
-                                  {getAgentName(node.agentId)}
-                                </span>
-                                {index < team.workflow.length - 1 && (
-                                  <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                                )}
-                              </div>
-                            ))}
+                    {/* Show new structure if available */}
+                    {team.agents && (
+                      <div className="text-sm space-y-1">
+                        <div className="font-medium">
+                          {team.agents.length} Agent{team.agents.length !== 1 ? "s" : ""}
+                          {team.skills && team.skills.length > 0 && `, ${team.skills.length} Skill${team.skills.length !== 1 ? "s" : ""}`}
+                          {team.hooks && team.hooks.length > 0 && `, ${team.hooks.length} Hook${team.hooks.length !== 1 ? "s" : ""}`}
                         </div>
                       </div>
                     )}
+
+                    {/* Show legacy workflow if no new structure */}
+                    {!team.agents && team.workflow && team.workflow.length > 0 && (
+                      <div>
+                        <div className="text-sm font-medium">
+                          {team.workflow.length} Agent{team.workflow.length !== 1 ? "s" : ""} (Legacy)
+                        </div>
+                        {team.chainingEnabled && (
+                          <div>
+                            <div className="text-sm font-medium text-muted-foreground mb-2">
+                              Workflow Chain:
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {team.workflow
+                                .sort((a, b) => a.order - b.order)
+                                .map((node, index) => (
+                                  <div key={node.agentId} className="flex items-center gap-2">
+                                    <span className="px-2 py-1 bg-primary text-primary-foreground rounded text-xs">
+                                      {getAgentName(node.agentId)}
+                                    </span>
+                                    {index < (team.workflow?.length || 0) - 1 && (
+                                      <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                    )}
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <div className="pt-2">
                       <Button
                         onClick={() => handleDeployTeam(team)}
-                        disabled={isDeploying || isDeployed || team.workflow.length === 0}
+                        disabled={isDeploying || isDeployed || (!team.agents?.length && !team.workflow?.length)}
                         size="sm"
                         className="w-full"
                         variant={isDeployed ? "outline" : "default"}

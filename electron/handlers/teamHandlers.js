@@ -306,7 +306,7 @@ export function registerTeamHandlers(ipcMain) {
       await fs.mkdir(path.join(teamPath, 'agents'), { recursive: true });
       await fs.mkdir(path.join(teamPath, 'skills'), { recursive: true });
 
-      // Save team metadata
+      // Save team metadata (supports both v1 workflow and v2 structure)
       const metadataPath = getTeamMetadataPath(projectPath, team.id);
       const metadata = {
         id: team.id,
@@ -314,6 +314,12 @@ export function registerTeamHandlers(ipcMain) {
         description: team.description,
         createdAt: team.createdAt,
         updatedAt: team.updatedAt,
+        // v2 structure
+        agents: team.agents || [],
+        skills: team.skills || [],
+        hooks: team.hooks || [],
+        security: team.security || { configured: false },
+        // v1 legacy structure (backward compatibility)
         workflow: team.workflow || [],
         chainingEnabled: team.chainingEnabled || false,
       };
@@ -457,7 +463,7 @@ export function registerTeamHandlers(ipcMain) {
   });
 
   /**
-   * Generate agent files from team workflow
+   * Generate agent files from team agents array (v2) or workflow (v1 legacy)
    * Creates agent files in the team's agents/ directory
    */
   ipcMain.handle('team:generateAgents', async (event, { projectPath, teamId, agentLibrary }) => {
@@ -473,14 +479,16 @@ export function registerTeamHandlers(ipcMain) {
       // Ensure agents directory exists
       await fs.mkdir(agentsDir, { recursive: true });
 
-      // Generate agent files from workflow
+      // Generate agent files from agents array (v2) or workflow (v1 legacy)
       const generatedFiles = [];
+      const agentsList = team.agents || team.workflow || [];
 
-      for (const workflowNode of team.workflow || []) {
-        const agent = agentLibrary.find(a => a.id === workflowNode.agentId);
+      for (const agentItem of agentsList) {
+        const agentId = agentItem.agentId;
+        const agent = agentLibrary.find(a => a.id === agentId);
 
         if (!agent) {
-          console.warn(`Agent not found in library: ${workflowNode.agentId}`);
+          console.warn(`Agent not found in library: ${agentId}`);
           continue;
         }
 
@@ -503,9 +511,9 @@ model: ${agent.model}
         let content = agent.template;
 
         // Add custom instructions if provided
-        if (workflowNode.customInstructions) {
+        if (agentItem.customInstructions) {
           content += '\n\n## Custom Instructions\n\n';
-          content += workflowNode.customInstructions;
+          content += agentItem.customInstructions;
         }
 
         const agentFileContent = frontmatter + content;
@@ -523,6 +531,179 @@ model: ${agent.model}
       };
     } catch (error) {
       throw new Error(`Failed to generate agent files: ${error.message}`);
+    }
+  });
+
+  /**
+   * Generate skill directories from team skills array
+   * Creates skill directories in the team's skills/ directory
+   */
+  ipcMain.handle('team:generateSkills', async (event, { projectPath, teamId, skillLibrary }) => {
+    try {
+      const teamPath = getTeamPath(projectPath, teamId);
+      const skillsDir = path.join(teamPath, 'skills');
+
+      // Load team metadata
+      const metadataPath = getTeamMetadataPath(projectPath, teamId);
+      const content = await fs.readFile(metadataPath, 'utf-8');
+      const team = JSON.parse(content);
+
+      // Ensure skills directory exists
+      await fs.mkdir(skillsDir, { recursive: true });
+
+      // Generate skill directories from skills array
+      const generatedDirs = [];
+
+      for (const skillItem of team.skills || []) {
+        const skill = skillLibrary.find(s => s.id === skillItem.skillId);
+
+        if (!skill) {
+          console.warn(`Skill not found in library: ${skillItem.skillId}`);
+          continue;
+        }
+
+        // Create skill directory
+        const skillDir = path.join(skillsDir, skill.id);
+        await fs.mkdir(skillDir, { recursive: true });
+
+        // Write SKILL.md file
+        const skillFilePath = path.join(skillDir, 'SKILL.md');
+        await fs.writeFile(skillFilePath, skill.content, 'utf-8');
+
+        generatedDirs.push(skill.id);
+      }
+
+      return {
+        success: true,
+        dirsGenerated: generatedDirs.length,
+        dirs: generatedDirs,
+      };
+    } catch (error) {
+      throw new Error(`Failed to generate skill directories: ${error.message}`);
+    }
+  });
+
+  /**
+   * Generate settings.json with hooks and security configuration
+   * Creates settings.json in the team directory
+   */
+  ipcMain.handle('team:generateSettings', async (event, { projectPath, teamId, hookLibrary }) => {
+    try {
+      const teamPath = getTeamPath(projectPath, teamId);
+
+      // Load team metadata
+      const metadataPath = getTeamMetadataPath(projectPath, teamId);
+      const content = await fs.readFile(metadataPath, 'utf-8');
+      const team = JSON.parse(content);
+
+      // Build settings.json structure
+      const settings = {
+        version: '1.0.0',
+      };
+
+      // Add hooks configuration
+      if (team.hooks && team.hooks.length > 0) {
+        settings.hooks = {};
+
+        for (const hookItem of team.hooks) {
+          const hook = hookLibrary.find(h => h.id === hookItem.hookId);
+
+          if (!hook) {
+            console.warn(`Hook not found in library: ${hookItem.hookId}`);
+            continue;
+          }
+
+          // Add hook to appropriate event
+          if (!settings.hooks[hook.event]) {
+            settings.hooks[hook.event] = [];
+          }
+
+          settings.hooks[hook.event].push({
+            name: hook.name,
+            command: hook.command,
+            description: hook.description,
+          });
+        }
+      }
+
+      // Add global security permissions (allow, deny, ask)
+      if (team.security && team.security.configured) {
+        if (team.security.permissions) {
+          settings.permissions = {};
+
+          if (team.security.permissions.allow && team.security.permissions.allow.length > 0) {
+            settings.permissions.allow = team.security.permissions.allow;
+          }
+
+          if (team.security.permissions.deny && team.security.permissions.deny.length > 0) {
+            settings.permissions.deny = team.security.permissions.deny;
+          }
+
+          if (team.security.permissions.ask && team.security.permissions.ask.length > 0) {
+            settings.permissions.ask = team.security.permissions.ask;
+          }
+        }
+
+        // Add non-sensitive environment variables
+        if (team.security.env && Object.keys(team.security.env).length > 0) {
+          settings.env = team.security.env;
+        }
+      }
+
+      // Write settings.json
+      const settingsPath = path.join(teamPath, 'settings.json');
+      await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
+
+      // Generate settings.local.json for element-level security
+      const localSettings = {};
+      let hasLocalSettings = false;
+
+      // Check if any agents have element-level security
+      for (const agentItem of team.agents || []) {
+        if (agentItem.security && agentItem.security.configured) {
+          if (!localSettings.agentPermissions) {
+            localSettings.agentPermissions = {};
+          }
+          localSettings.agentPermissions[agentItem.agentId] = agentItem.security.permissions;
+          hasLocalSettings = true;
+        }
+      }
+
+      // Check if any skills have element-level security
+      for (const skillItem of team.skills || []) {
+        if (skillItem.security && skillItem.security.configured) {
+          if (!localSettings.skillPermissions) {
+            localSettings.skillPermissions = {};
+          }
+          localSettings.skillPermissions[skillItem.skillId] = skillItem.security.permissions;
+          hasLocalSettings = true;
+        }
+      }
+
+      // Check if any hooks have element-level security
+      for (const hookItem of team.hooks || []) {
+        if (hookItem.security && hookItem.security.configured) {
+          if (!localSettings.hookPermissions) {
+            localSettings.hookPermissions = {};
+          }
+          localSettings.hookPermissions[hookItem.hookId] = hookItem.security.permissions;
+          hasLocalSettings = true;
+        }
+      }
+
+      // Write settings.local.json if there are local settings
+      if (hasLocalSettings) {
+        const localSettingsPath = path.join(teamPath, 'settings.local.json');
+        await fs.writeFile(localSettingsPath, JSON.stringify(localSettings, null, 2), 'utf-8');
+      }
+
+      return {
+        success: true,
+        settingsGenerated: true,
+        localSettingsGenerated: hasLocalSettings,
+      };
+    } catch (error) {
+      throw new Error(`Failed to generate settings: ${error.message}`);
     }
   });
 }

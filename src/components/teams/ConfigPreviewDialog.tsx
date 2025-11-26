@@ -41,7 +41,7 @@ export function ConfigPreviewDialog({ isOpen, onClose, team }: ConfigPreviewDial
                   {team.chainingEnabled ? "Yes" : "No"}
                 </div>
                 <div>
-                  <span className="font-medium">Agents:</span> {team.workflow.length}
+                  <span className="font-medium">Agents:</span> {team.workflow?.length || 0}
                 </div>
               </div>
             </div>
@@ -49,7 +49,7 @@ export function ConfigPreviewDialog({ isOpen, onClose, team }: ConfigPreviewDial
             <div>
               <h3 className="text-sm font-medium mb-2">Workflow Order</h3>
               <div className="bg-muted p-3 rounded-lg space-y-1 text-sm">
-                {team.workflow
+                {(team.workflow || [])
                   .sort((a, b) => a.order - b.order)
                   .map((node, index) => (
                     <div key={node.agentId}>

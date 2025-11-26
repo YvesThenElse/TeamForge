@@ -51,7 +51,7 @@ export function AgentSidebar({ isOpen, onToggle, onAddAgent, deployedAgents }: A
   }, [library, searchQuery, selectedCategory]);
 
   const isAgentInWorkflow = (agentId: string) => {
-    return currentTeam?.workflow.some((node) => node.agentId === agentId) || false;
+    return currentTeam?.workflow?.some((node) => node.agentId === agentId) || false;
   };
 
   const isAgentDeployed = (agentId: string) => {

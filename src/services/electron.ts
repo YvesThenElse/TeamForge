@@ -178,6 +178,24 @@ declare global {
         filesGenerated: number;
         files: string[];
       }>;
+      generateTeamSkills: (
+        projectPath: string,
+        teamId: string,
+        skillLibrary: any[]
+      ) => Promise<{
+        success: boolean;
+        dirsGenerated: number;
+        dirs: string[];
+      }>;
+      generateTeamSettings: (
+        projectPath: string,
+        teamId: string,
+        hookLibrary: any[]
+      ) => Promise<{
+        success: boolean;
+        settingsGenerated: boolean;
+        localSettingsGenerated: boolean;
+      }>;
 
       // Agent Repository commands
       syncAgentRepository: (repoUrl: string, branch: string, cachePath?: string, projectPath?: string, sourcePath?: string) => Promise<{
@@ -672,6 +690,22 @@ export async function generateTeamAgents(
   agentLibrary: Agent[]
 ): Promise<{ success: boolean; filesGenerated: number; files: string[] }> {
   return window.electronAPI.generateTeamAgents(projectPath, teamId, agentLibrary);
+}
+
+export async function generateTeamSkills(
+  projectPath: string,
+  teamId: string,
+  skillLibrary: any[]
+): Promise<{ success: boolean; dirsGenerated: number; dirs: string[] }> {
+  return window.electronAPI.generateTeamSkills(projectPath, teamId, skillLibrary);
+}
+
+export async function generateTeamSettings(
+  projectPath: string,
+  teamId: string,
+  hookLibrary: any[]
+): Promise<{ success: boolean; settingsGenerated: boolean; localSettingsGenerated: boolean }> {
+  return window.electronAPI.generateTeamSettings(projectPath, teamId, hookLibrary);
 }
 
 // ============================================================================
