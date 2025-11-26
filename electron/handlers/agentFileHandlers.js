@@ -349,20 +349,22 @@ export function registerAgentFileHandlers(ipcMain) {
     }
   });
 
-  // Load template agents from agents_template directory
+  // DEPRECATED: agents_template, hooks_template, and skills_template are no longer used
+  // Agent templates are now loaded from Git repository based on configuration
   ipcMain.handle('agentFile:loadTemplates', async () => {
     try {
-      // Go up from handlers directory to project root
+      // This handler is deprecated and will be removed in future versions
+      // Templates should be loaded from the configured Git repository instead
       const projectRoot = path.join(__dirname, '..', '..');
       const templatesDir = path.join(projectRoot, 'agents_template');
 
-      console.log('[agentFile:loadTemplates] Loading from:', templatesDir);
+      console.log('[agentFile:loadTemplates] DEPRECATED: Loading from:', templatesDir);
 
       // Check if directory exists
       try {
         await fs.access(templatesDir);
       } catch {
-        console.log('[agentFile:loadTemplates] Directory not found');
+        console.log('[agentFile:loadTemplates] Directory not found (expected - use Git repository instead)');
         return [];
       }
 

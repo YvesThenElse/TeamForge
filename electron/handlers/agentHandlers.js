@@ -6,7 +6,7 @@ import os from 'os';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load agent library from Git repository or fallback to local agents_template
+// Load agent library from Git repository based on configuration
 let agentLibrary = null;
 let agentLibraryDev = null;
 
