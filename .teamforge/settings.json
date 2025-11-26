@@ -1,0 +1,32 @@
+{
+  "agentRepoUrl": "https://github.com/VoltAgent/awesome-claude-code-subagents",
+  "agentRepoBranch": "main",
+  "agentSourcePath": "categories",
+  "agentDevPath": "",
+  "agentCachePath": ".teamforge/cache/agents",
+  "agentLastSync": "2025-11-26T16:43:11.865Z",
+  "skillRepoUrl": "",
+  "skillRepoBranch": "main",
+  "skillSourcePath": "",
+  "skillDevPath": "",
+  "skillCachePath": ".teamforge/cache/skills",
+  "skillLastSync": null,
+  "hookRepoUrl": "",
+  "hookRepoBranch": "main",
+  "hookSourcePath": "",
+  "hookDevPath": "",
+  "hookCachePath": ".teamforge/cache/hooks",
+  "hookLastSync": null,
+  "autoSync": false,
+  "theme": "system",
+  "confirmDeploy": true,
+  "claudeSettingsFile": "settings.local.json",
+  "developerMode": true,
+  "defaultModel": "sonnet",
+  "defaultTools": "*",
+  "security": {
+    "allowedCommands": [],
+    "blockedCommands": [],
+    "requireConfirmation": true
+  }
+}
