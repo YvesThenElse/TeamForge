@@ -398,14 +398,14 @@ export function TeamEditor({ onClose }: TeamEditorProps) {
             placeholder="Team Name *"
             value={teamName}
             onChange={(e) => setTeamName(e.target.value)}
-            className="font-semibold"
+            className="font-semibold bg-white dark:bg-gray-900"
           />
           <div className="flex gap-2">
             <Textarea
               placeholder="Team Description"
               value={teamDescription}
               onChange={(e) => setTeamDescription(e.target.value)}
-              className="flex-1 resize-none"
+              className="flex-1 resize-none bg-white dark:bg-gray-900"
               rows={2}
             />
             <Button
@@ -445,113 +445,82 @@ export function TeamEditor({ onClose }: TeamEditorProps) {
       {/* Main editor area */}
       <div
         ref={editorRef}
-        className="flex-1 overflow-auto p-6 space-y-6"
+        className="flex-1 overflow-auto p-6"
         onContextMenu={handleContextMenu}
       >
-        {/* Agents Section */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            Agents ({agents.length})
-          </h3>
-          <div className="flex flex-wrap gap-3 min-h-[80px] p-4 border-2 border-dashed rounded-lg bg-muted/20">
-            {agents.length === 0 ? (
-              <div className="flex items-center justify-center w-full text-sm text-muted-foreground">
-                Right-click to add agents
-              </div>
-            ) : (
-              agents
-                .sort((a, b) => a.order - b.order)
-                .map((agent) => (
-                  <TeamElementCard
-                    key={agent.agentId}
-                    type="agent"
-                    id={agent.agentId}
-                    library={agentLibrary}
-                    security={agent.security}
-                    onRemove={() => handleRemoveAgent(agent.agentId)}
-                    onConfigureSecurity={() =>
-                      handleConfigureElementSecurity("agent", agent.agentId)
-                    }
-                  />
-                ))
-            )}
-          </div>
-        </div>
+        {/* Combined Elements Section - Masonry Grid */}
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3 min-h-[200px] p-4 border-2 border-dashed rounded-2xl bg-white dark:bg-gray-900">
+          {/* Agents */}
+          {agents
+            .sort((a, b) => a.order - b.order)
+            .map((agent) => (
+              <TeamElementCard
+                key={agent.agentId}
+                type="agent"
+                id={agent.agentId}
+                library={agentLibrary}
+                security={agent.security}
+                onRemove={() => handleRemoveAgent(agent.agentId)}
+                onConfigureSecurity={() =>
+                  handleConfigureElementSecurity("agent", agent.agentId)
+                }
+              />
+            ))}
 
-        {/* Skills Section */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            Skills ({skills.length})
-          </h3>
-          <div className="flex flex-wrap gap-3 min-h-[80px] p-4 border-2 border-dashed rounded-lg bg-muted/20">
-            {skills.length === 0 ? (
-              <div className="flex items-center justify-center w-full text-sm text-muted-foreground">
-                Right-click to add skills
-              </div>
-            ) : (
-              skills
-                .sort((a, b) => a.order - b.order)
-                .map((skill) => (
-                  <TeamElementCard
-                    key={skill.skillId}
-                    type="skill"
-                    id={skill.skillId}
-                    security={skill.security}
-                    onRemove={() => handleRemoveSkill(skill.skillId)}
-                    onConfigureSecurity={() =>
-                      handleConfigureElementSecurity("skill", skill.skillId)
-                    }
-                  />
-                ))
-            )}
-          </div>
-        </div>
+          {/* Skills */}
+          {skills
+            .sort((a, b) => a.order - b.order)
+            .map((skill) => (
+              <TeamElementCard
+                key={skill.skillId}
+                type="skill"
+                id={skill.skillId}
+                skillLibrary={skillLibrary}
+                security={skill.security}
+                onRemove={() => handleRemoveSkill(skill.skillId)}
+                onConfigureSecurity={() =>
+                  handleConfigureElementSecurity("skill", skill.skillId)
+                }
+              />
+            ))}
 
-        {/* Hooks Section */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            Hooks ({hooks.length})
-          </h3>
-          <div className="flex flex-wrap gap-3 min-h-[80px] p-4 border-2 border-dashed rounded-lg bg-muted/20">
-            {hooks.length === 0 ? (
-              <div className="flex items-center justify-center w-full text-sm text-muted-foreground">
-                Right-click to add hooks
-              </div>
-            ) : (
-              hooks
-                .sort((a, b) => a.order - b.order)
-                .map((hook) => (
-                  <TeamElementCard
-                    key={hook.hookId}
-                    type="hook"
-                    id={hook.hookId}
-                    security={hook.security}
-                    onRemove={() => handleRemoveHook(hook.hookId)}
-                    onConfigureSecurity={() =>
-                      handleConfigureElementSecurity("hook", hook.hookId)
-                    }
-                  />
-                ))
-            )}
-          </div>
-        </div>
+          {/* Hooks */}
+          {hooks
+            .sort((a, b) => a.order - b.order)
+            .map((hook) => (
+              <TeamElementCard
+                key={hook.hookId}
+                type="hook"
+                id={hook.hookId}
+                hookLibrary={hookLibrary}
+                security={hook.security}
+                onRemove={() => handleRemoveHook(hook.hookId)}
+                onConfigureSecurity={() =>
+                  handleConfigureElementSecurity("hook", hook.hookId)
+                }
+              />
+            ))}
 
-        {/* Global Security Section */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            Global Security
-          </h3>
-          <div className="flex flex-wrap gap-3 min-h-[80px] p-4 border-2 border-dashed rounded-lg bg-muted/20">
-            <TeamElementCard
-              type="security"
-              id="global"
-              configured={security.configured}
-              onRemove={() =>
-                setSecurity({ ...security, configured: false })
-              }
-              onConfigureSecurity={handleAddSecurity}
-            />
-          </div>
+          {/* Global Security */}
+          <TeamElementCard
+            type="security"
+            id="global"
+            configured={security.configured}
+            onRemove={() =>
+              setSecurity({ ...security, configured: false })
+            }
+            onConfigureSecurity={handleAddSecurity}
+          />
+
+          {/* Empty state hint */}
+          {agents.length === 0 && skills.length === 0 && hooks.length === 0 && (
+            <div className="col-span-full flex flex-col items-center justify-center py-8 text-center">
+              <div className="text-4xl mb-3 opacity-30">+</div>
+              <div className="text-sm text-muted-foreground">
+                Right-click to add agents, skills or hooks
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
