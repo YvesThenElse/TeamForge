@@ -1,4 +1,4 @@
-import { X, Copy, Check, Trash2, Edit, Save, Server, Terminal, Globe } from "lucide-react";
+import { X, Trash2, Edit, Save, Server, Terminal, Globe, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -27,7 +27,6 @@ export function McpDetailModal({
   void _projectPath; // Reserved for future use
   const { mcpDevPath } = useSettingsStore();
   const { projectPath: currentProjectPath } = useProjectStore();
-  const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
   // Editable fields
@@ -45,37 +44,6 @@ export function McpDetailModal({
 
   const categories: McpCategory[] = ["filesystem", "database", "api", "tools"];
   const serverTypes: McpServerType[] = ["stdio", "http", "sse"];
-
-  const handleCopyConfig = () => {
-    const config = generateMcpConfig();
-    navigator.clipboard.writeText(JSON.stringify(config, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const generateMcpConfig = () => {
-    const config: any = {
-      name: mcp.name,
-      description: mcp.description,
-      category: mcp.category,
-      tags: mcp.tags,
-      type: mcp.type,
-    };
-
-    if (mcp.type === "stdio") {
-      if (mcp.command) config.command = mcp.command;
-      if (mcp.args && mcp.args.length > 0) config.args = mcp.args;
-    } else {
-      if (mcp.url) config.url = mcp.url;
-      if (mcp.headers && Object.keys(mcp.headers).length > 0) config.headers = mcp.headers;
-    }
-
-    if (mcp.env && Object.keys(mcp.env).length > 0) {
-      config.env = mcp.env;
-    }
-
-    return config;
-  };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -177,6 +145,15 @@ export function McpDetailModal({
     } catch (err) {
       console.error("Failed to delete MCP:", err);
       alert(`Failed to delete MCP: ${err}`);
+    }
+  };
+
+  const handleOpenFile = async () => {
+    try {
+      await electron.openMcpTemplateFile(mcp.id, mcpDevPath || undefined, currentProjectPath || undefined);
+    } catch (err) {
+      console.error("Failed to open file:", err);
+      alert(`Failed to open file: ${err}`);
     }
   };
 
@@ -468,38 +445,6 @@ export function McpDetailModal({
             </div>
           </div>
 
-          {/* MCP Config Preview */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-muted-foreground">
-                Template Format (mcp.json)
-              </label>
-              {!isEditing && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCopyConfig}
-                >
-                  {copied ? (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-            <div className="bg-muted p-4 rounded-lg overflow-auto max-h-60">
-              <pre className="text-sm whitespace-pre-wrap font-mono">
-                {JSON.stringify(generateMcpConfig(), null, 2)}
-              </pre>
-            </div>
-          </div>
         </div>
 
         {/* Footer */}
@@ -521,6 +466,10 @@ export function McpDetailModal({
               <>
                 <Button variant="outline" onClick={handleCancelEdit}>
                   Cancel
+                </Button>
+                <Button variant="outline" onClick={handleOpenFile}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Open File
                 </Button>
                 <Button
                   onClick={handleSave}

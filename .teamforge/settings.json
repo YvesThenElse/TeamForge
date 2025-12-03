@@ -2,7 +2,7 @@
   "agentRepoUrl": "https://github.com/VoltAgent/awesome-claude-code-subagents",
   "agentRepoBranch": "main",
   "agentSourcePath": "categories",
-  "agentDevPath": "",
+  "agentDevPath": "C:\\Users\\luleperey\\sources\\perso\\TeamConfig\\Agents",
   "agentCachePath": ".teamforge/cache/agents",
   "agentLastSync": "2025-11-27T13:39:43.851Z",
   "skillRepoUrl": "",
@@ -21,7 +21,7 @@
   "theme": "system",
   "confirmDeploy": true,
   "claudeSettingsFile": "settings.local.json",
-  "developerMode": true,
+  "developerMode": false,
   "defaultModel": "sonnet",
   "defaultTools": "*",
   "security": {

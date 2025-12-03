@@ -346,4 +346,50 @@ export function registerMcpHandlers(ipcMain) {
       throw err;
     }
   });
+
+  // Open MCP template file in default editor
+  ipcMain.handle('mcp:openTemplateFile', async (event, { mcpId, devPath, projectPath }) => {
+    const { shell } = require('electron');
+
+    try {
+      // Resolve dev directory path
+      let devDir = devPath;
+      if (!devDir) {
+        throw new Error('Dev path is not configured');
+      }
+      if (!path.isAbsolute(devDir)) {
+        if (projectPath) {
+          devDir = path.join(projectPath, devDir);
+        } else {
+          throw new Error('Cannot open template: no project selected');
+        }
+      }
+
+      const mcpPath = path.join(devDir, mcpId);
+      const filePath = path.join(mcpPath, 'mcp.json');
+
+      // Check if file exists
+      try {
+        await fs.access(filePath);
+      } catch {
+        throw new Error(`MCP template file not found: ${filePath}`);
+      }
+
+      // Open file in default editor
+      const result = await shell.openPath(filePath);
+      if (result) {
+        throw new Error(`Failed to open file: ${result}`);
+      }
+
+      console.log(`[McpHandlers] Opened template: ${filePath}`);
+
+      return {
+        success: true,
+        path: filePath,
+      };
+    } catch (err) {
+      console.error('[mcp:openTemplateFile] Failed:', err);
+      throw err;
+    }
+  });
 }

@@ -1,4 +1,4 @@
-import { X, Copy, Check, Trash2, Edit, Save } from "lucide-react";
+import { X, Copy, Check, Trash2, Edit, Save, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -123,6 +123,19 @@ export function AgentDetailModal({
     } catch (err) {
       console.error("Failed to delete agent:", err);
       alert(`Failed to delete agent: ${err}`);
+    }
+  };
+
+  const handleOpenFile = async () => {
+    try {
+      await electron.openAgentTemplateFile(
+        agent.id,
+        agentDevPath || undefined,
+        projectPath || undefined
+      );
+    } catch (err) {
+      console.error("Failed to open file:", err);
+      alert(`Failed to open file: ${err}`);
     }
   };
 
@@ -306,24 +319,6 @@ export function AgentDetailModal({
             )}
           </div>
 
-          {/* File Format Preview */}
-          <div>
-            <label className="text-sm font-medium text-muted-foreground mb-2 block">
-              Agent File Format
-            </label>
-            <div className="bg-muted p-4 rounded-lg overflow-auto">
-              <pre className="text-sm whitespace-pre-wrap font-mono">
-                {`---
-name: ${agent.name}
-description: ${agent.description}
-tools: ${typeof agent.tools === "string" ? agent.tools : agent.tools?.join(", ") || "all"}
-model: ${agent.model || "sonnet"}
----
-
-${agent.template || "System prompt goes here..."}`}
-              </pre>
-            </div>
-          </div>
         </div>
 
         {/* Footer */}
@@ -360,6 +355,10 @@ ${agent.template || "System prompt goes here..."}`}
               <>
                 <Button variant="outline" onClick={handleCancelEdit}>
                   Cancel
+                </Button>
+                <Button variant="outline" onClick={handleOpenFile}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Open File
                 </Button>
                 <Button onClick={handleSave} disabled={isSaving}>
                   {isSaving ? (

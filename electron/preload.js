@@ -36,6 +36,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('agent:updateTemplate', { agentId, agent, devPath, projectPath }),
   deleteAgentTemplate: (agentId, devPath, projectPath) =>
     ipcRenderer.invoke('agent:deleteTemplate', { agentId, devPath, projectPath }),
+  openAgentTemplateFile: (agentId, devPath, projectPath) =>
+    ipcRenderer.invoke('agent:openTemplateFile', { agentId, devPath, projectPath }),
 
   // Config commands
   loadTeamforgeConfig: (projectPath) =>
@@ -113,6 +115,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('skill:updateTemplate', { skillId, skill }),
   deleteSkillTemplate: (skillId) =>
     ipcRenderer.invoke('skill:deleteTemplate', { skillId }),
+  openSkillTemplateFile: (skillId, devPath, projectPath) =>
+    ipcRenderer.invoke('skill:openTemplateFile', { skillId, devPath, projectPath }),
 
   // Team commands
   listTeams: (projectPath) =>
@@ -166,6 +170,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('hook:updateTemplate', { hookId, hook }),
   deleteHookTemplate: (hookId) =>
     ipcRenderer.invoke('hook:deleteTemplate', { hookId }),
+  openHookTemplateFile: (devPath, projectPath) =>
+    ipcRenderer.invoke('hook:openTemplateFile', { devPath, projectPath }),
 
   // MCP Server commands
   listMcpServers: (projectPath) =>
@@ -179,6 +185,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('mcp:updateTemplate', { mcpId, mcp, devPath, projectPath }),
   deleteMcpTemplate: (mcpId, devPath, projectPath) =>
     ipcRenderer.invoke('mcp:deleteTemplate', { mcpId, devPath, projectPath }),
+  openMcpTemplateFile: (mcpId, devPath, projectPath) =>
+    ipcRenderer.invoke('mcp:openTemplateFile', { mcpId, devPath, projectPath }),
 
   // TeamForge Settings commands (project-level settings.json)
   loadTeamforgeSettings: (projectPath) =>

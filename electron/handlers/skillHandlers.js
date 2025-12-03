@@ -412,4 +412,46 @@ export function registerSkillHandlers(ipcMain) {
       throw err;
     }
   });
+
+  // Open skill template file in default editor
+  ipcMain.handle('skill:openTemplateFile', async (event, { skillId, devPath, projectPath }) => {
+    const { shell } = require('electron');
+
+    try {
+      // Determine the dev directory
+      let devDir;
+      if (devPath) {
+        devDir = path.isAbsolute(devPath) ? devPath : path.join(projectPath || '', devPath);
+      } else {
+        const projectRoot = path.join(__dirname, '..', '..');
+        devDir = path.join(projectRoot, 'skills_dev');
+      }
+
+      const skillPath = path.join(devDir, skillId);
+      const filePath = path.join(skillPath, 'SKILL.md');
+
+      // Check if file exists
+      try {
+        await fs.access(filePath);
+      } catch {
+        throw new Error(`Skill template file not found: ${filePath}`);
+      }
+
+      // Open file in default editor
+      const result = await shell.openPath(filePath);
+      if (result) {
+        throw new Error(`Failed to open file: ${result}`);
+      }
+
+      console.log(`[SkillHandlers] Opened template: ${filePath}`);
+
+      return {
+        success: true,
+        path: filePath,
+      };
+    } catch (err) {
+      console.error('[skill:openTemplateFile] Failed:', err);
+      throw err;
+    }
+  });
 }

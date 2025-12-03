@@ -1,4 +1,4 @@
-import { X, Copy, Check, Trash2, Edit, Save } from "lucide-react";
+import { X, Copy, Check, Trash2, Edit, Save, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -39,13 +39,14 @@ export function HookDetailModal({
   hook,
   projectPath,
   isDeployed,
-  claudeSettingsFile,
+  claudeSettingsFile: _claudeSettingsFile,
   onClose,
   onDeploy,
   onRemove,
   devMode = false,
   onRefresh
 }: HookDetailModalProps) {
+  void _claudeSettingsFile; // Reserved for future use
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -135,6 +136,15 @@ export function HookDetailModal({
     } catch (err) {
       console.error("Failed to delete hook:", err);
       alert(`Failed to delete hook: ${err}`);
+    }
+  };
+
+  const handleOpenFile = async () => {
+    try {
+      await electron.openHookTemplateFile();
+    } catch (err) {
+      console.error("Failed to open file:", err);
+      alert(`Failed to open file: ${err}`);
     }
   };
 
@@ -384,42 +394,6 @@ export function HookDetailModal({
             )}
           </div>
 
-          {/* Configuration Preview */}
-          <div>
-            <label className="text-sm font-medium text-muted-foreground mb-2 block">
-              Configuration Preview (.claude/{claudeSettingsFile})
-            </label>
-            <div className="bg-muted p-4 rounded-lg overflow-auto">
-              <pre className="text-sm whitespace-pre-wrap font-mono">
-{`{
-  "hooks": {
-    "${hook.event}": [
-      {
-        "matcher": "${hook.matcher}",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${hook.command}"
-          }
-        ]
-      }
-    ]
-  }
-}`}
-              </pre>
-            </div>
-          </div>
-
-          {/* How It Works */}
-          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-            <h3 className="text-sm font-semibold mb-2">How This Hook Works</h3>
-            <ul className="text-sm space-y-1 text-muted-foreground">
-              <li>• <strong>Triggers:</strong> When the <code className="bg-muted px-1">{hook.event}</code> event occurs</li>
-              <li>• <strong>Matches:</strong> Tools matching <code className="bg-muted px-1">{hook.matcher}</code></li>
-              <li>• <strong>Executes:</strong> The shell command specified above</li>
-              <li>• <strong>Location:</strong> Saved to <code className="bg-muted px-1">.claude/{claudeSettingsFile}</code></li>
-            </ul>
-          </div>
         </div>
 
         {/* Footer */}
@@ -456,6 +430,10 @@ export function HookDetailModal({
               <>
                 <Button variant="outline" onClick={handleCancelEdit}>
                   Cancel
+                </Button>
+                <Button variant="outline" onClick={handleOpenFile}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Open File
                 </Button>
                 <Button onClick={handleSave} disabled={isSaving}>
                   {isSaving ? (

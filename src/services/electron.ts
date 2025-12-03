@@ -133,6 +133,7 @@ declare global {
       createAgentTemplate: (agent: Partial<Agent>, devPath?: string, projectPath?: string) => Promise<{ success: boolean; path: string; agentId: string; message: string }>;
       updateAgentTemplate: (agentId: string, agent: Partial<Agent>, devPath?: string, projectPath?: string) => Promise<{ success: boolean; path: string; message: string }>;
       deleteAgentTemplate: (agentId: string, devPath?: string, projectPath?: string) => Promise<{ success: boolean; message: string }>;
+      openAgentTemplateFile: (agentId: string, devPath?: string, projectPath?: string) => Promise<{ success: boolean; path: string }>;
       getClaudeInfo: (projectPath: string) => Promise<ClaudeInfo>;
       getGlobalClaudeInfo: () => Promise<GlobalClaudeInfo>;
 
@@ -152,6 +153,7 @@ declare global {
       createSkillTemplate: (skill: Partial<Skill>) => Promise<{ success: boolean; path: string; skillId: string; message: string }>;
       updateSkillTemplate: (skillId: string, skill: Partial<Skill>) => Promise<{ success: boolean; path: string; message: string }>;
       deleteSkillTemplate: (skillId: string) => Promise<{ success: boolean; message: string }>;
+      openSkillTemplateFile: (skillId: string, devPath?: string, projectPath?: string) => Promise<{ success: boolean; path: string }>;
 
       // Team commands
       listTeams: (projectPath: string) => Promise<Team[]>;
@@ -256,6 +258,7 @@ declare global {
       createHookTemplate: (hook: Partial<Hook>) => Promise<{ success: boolean; hookId: string; message: string }>;
       updateHookTemplate: (hookId: string, hook: Partial<Hook>) => Promise<{ success: boolean; message: string }>;
       deleteHookTemplate: (hookId: string) => Promise<{ success: boolean; message: string }>;
+      openHookTemplateFile: (devPath?: string, projectPath?: string) => Promise<{ success: boolean; path: string }>;
       listHooks: (projectPath: string, settingsFileName?: string) => Promise<Array<{
         event: string;
         matcher: string;
@@ -279,6 +282,7 @@ declare global {
       createMcpTemplate: (mcp: Partial<McpServer>, devPath?: string, projectPath?: string) => Promise<{ success: boolean; path: string; mcpId: string; message: string }>;
       updateMcpTemplate: (mcpId: string, mcp: Partial<McpServer>, devPath?: string, projectPath?: string) => Promise<{ success: boolean; path: string; message: string }>;
       deleteMcpTemplate: (mcpId: string, devPath?: string, projectPath?: string) => Promise<{ success: boolean; message: string }>;
+      openMcpTemplateFile: (mcpId: string, devPath?: string, projectPath?: string) => Promise<{ success: boolean; path: string }>;
 
       // TeamForge Settings commands (project-level .teamforge/settings.json)
       loadTeamforgeSettings: (projectPath: string) => Promise<{
@@ -481,6 +485,17 @@ export async function deleteAgentTemplate(
   return window.electronAPI.deleteAgentTemplate(agentId, devPath, projectPath);
 }
 
+export async function openAgentTemplateFile(
+  agentId: string,
+  devPath?: string,
+  projectPath?: string
+): Promise<{
+  success: boolean;
+  path: string;
+}> {
+  return window.electronAPI.openAgentTemplateFile(agentId, devPath, projectPath);
+}
+
 // ============================================================================
 // Config Commands
 // ============================================================================
@@ -667,6 +682,17 @@ export async function deleteSkillTemplate(skillId: string): Promise<{
   return window.electronAPI.deleteSkillTemplate(skillId);
 }
 
+export async function openSkillTemplateFile(
+  skillId: string,
+  devPath?: string,
+  projectPath?: string
+): Promise<{
+  success: boolean;
+  path: string;
+}> {
+  return window.electronAPI.openSkillTemplateFile(skillId, devPath, projectPath);
+}
+
 // ============================================================================
 // Team Commands
 // ============================================================================
@@ -806,6 +832,16 @@ export async function deleteHookTemplate(hookId: string): Promise<{
   return window.electronAPI.deleteHookTemplate(hookId);
 }
 
+export async function openHookTemplateFile(
+  devPath?: string,
+  projectPath?: string
+): Promise<{
+  success: boolean;
+  path: string;
+}> {
+  return window.electronAPI.openHookTemplateFile(devPath, projectPath);
+}
+
 export async function listHooks(projectPath: string, settingsFileName?: string): Promise<Array<{
   event: string;
   matcher: string;
@@ -895,6 +931,17 @@ export async function deleteMcpTemplate(
   message: string;
 }> {
   return window.electronAPI.deleteMcpTemplate(mcpId, devPath, projectPath);
+}
+
+export async function openMcpTemplateFile(
+  mcpId: string,
+  devPath?: string,
+  projectPath?: string
+): Promise<{
+  success: boolean;
+  path: string;
+}> {
+  return window.electronAPI.openMcpTemplateFile(mcpId, devPath, projectPath);
 }
 
 // ============================================================================

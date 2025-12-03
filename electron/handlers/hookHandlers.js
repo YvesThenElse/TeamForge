@@ -364,4 +364,43 @@ export function registerHookHandlers(ipcMain) {
       throw err;
     }
   });
+
+  // Open hook library file in default editor
+  ipcMain.handle('hook:openTemplateFile', async (event, { devPath, projectPath }) => {
+    const { shell } = require('electron');
+
+    try {
+      // Determine the library path
+      let libraryPath;
+      if (devPath) {
+        const resolvedDevPath = path.isAbsolute(devPath) ? devPath : path.join(projectPath || '', devPath);
+        libraryPath = path.join(resolvedDevPath, 'library.json');
+      } else {
+        libraryPath = path.join(__dirname, '..', '..', 'hooks_dev', 'library.json');
+      }
+
+      // Check if file exists
+      try {
+        await fs.access(libraryPath);
+      } catch {
+        throw new Error(`Hook library file not found: ${libraryPath}`);
+      }
+
+      // Open file in default editor
+      const result = await shell.openPath(libraryPath);
+      if (result) {
+        throw new Error(`Failed to open file: ${result}`);
+      }
+
+      console.log(`[HookHandlers] Opened library: ${libraryPath}`);
+
+      return {
+        success: true,
+        path: libraryPath,
+      };
+    } catch (err) {
+      console.error('[hook:openTemplateFile] Failed:', err);
+      throw err;
+    }
+  });
 }

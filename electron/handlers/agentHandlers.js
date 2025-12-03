@@ -454,4 +454,46 @@ ${agent.template || ''}`;
       message: `Agent template deleted: ${agentId}`,
     };
   });
+
+  // Open agent template file in default editor
+  ipcMain.handle('agent:openTemplateFile', async (event, { agentId, devPath, projectPath }) => {
+    const { shell } = require('electron');
+
+    if (!devPath) {
+      throw new Error('Dev Path is not configured. Please set a Dev Path in Settings > Agents.');
+    }
+
+    // Resolve relative paths from project path
+    let resolvedDevPath = devPath;
+    if (!path.isAbsolute(devPath)) {
+      if (projectPath) {
+        resolvedDevPath = path.join(projectPath, devPath);
+      } else {
+        throw new Error('Developer mode with relative path requires a project to be selected.');
+      }
+    }
+
+    // Reconstruct the file path from the ID
+    const filePath = path.join(resolvedDevPath, agentId.replace(/-/g, '/') + '.md');
+
+    // Check if file exists
+    try {
+      await fs.access(filePath);
+    } catch {
+      throw new Error(`Agent template not found: ${filePath}`);
+    }
+
+    // Open file in default editor
+    const result = await shell.openPath(filePath);
+    if (result) {
+      throw new Error(`Failed to open file: ${result}`);
+    }
+
+    console.log(`[AgentHandlers] Opened template: ${filePath}`);
+
+    return {
+      success: true,
+      path: filePath,
+    };
+  });
 }

@@ -1,4 +1,4 @@
-import { X, Copy, Check, Trash2, Edit, Save } from "lucide-react";
+import { X, Copy, Check, Trash2, Edit, Save, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -108,6 +108,15 @@ export function SkillDetailModal({
     } catch (err) {
       console.error("Failed to delete skill:", err);
       alert(`Failed to delete skill: ${err}`);
+    }
+  };
+
+  const handleOpenFile = async () => {
+    try {
+      await electron.openSkillTemplateFile(skill.id);
+    } catch (err) {
+      console.error("Failed to open file:", err);
+      alert(`Failed to open file: ${err}`);
     }
   };
 
@@ -280,22 +289,6 @@ export function SkillDetailModal({
             )}
           </div>
 
-          {/* File Format Preview */}
-          <div>
-            <label className="text-sm font-medium text-muted-foreground mb-2 block">
-              Skill File Format (SKILL.md)
-            </label>
-            <div className="bg-muted p-4 rounded-lg overflow-auto">
-              <pre className="text-sm whitespace-pre-wrap font-mono">
-{`---
-name: ${skill.name}
-description: ${skill.description}${skill.allowedTools ? `\nallowed-tools: ${skill.allowedTools}` : ''}${skill.category ? `\ncategory: ${skill.category}` : ''}${skill.tags && skill.tags.length > 0 ? `\ntags:\n  - ${skill.tags.join('\n  - ')}` : ''}
----
-
-${skill.instructions || "Instructions go here..."}`}
-              </pre>
-            </div>
-          </div>
         </div>
 
         {/* Footer */}
@@ -332,6 +325,10 @@ ${skill.instructions || "Instructions go here..."}`}
               <>
                 <Button variant="outline" onClick={handleCancelEdit}>
                   Cancel
+                </Button>
+                <Button variant="outline" onClick={handleOpenFile}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Open File
                 </Button>
                 <Button onClick={handleSave} disabled={isSaving}>
                   {isSaving ? (
