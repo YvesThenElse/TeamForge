@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FolderOpen, GitBranch, Loader2, Clock, X, CheckCircle, XCircle, Info, ExternalLink, Wrench, BookOpen, Eye } from "lucide-react";
+import { FolderOpen, GitBranch, Loader2, Clock, X, CheckCircle, XCircle, Info, ExternalLink, Wrench, BookOpen, Eye, Code, Server } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -9,9 +9,18 @@ import { getRecentProjects, removeRecentProject, type RecentProject } from "@/li
 import type { ClaudeInfo, GlobalClaudeInfo } from "@/types/claudeInfo";
 import type { AgentFile } from "@/types/agentFile";
 import type { Skill } from "@/types/skill";
+import type { McpServer } from "@/types/mcp";
 import { AgentDetailModal } from "@/components/agents/AgentDetailModal";
 import { SkillDetailModal } from "@/components/skills/SkillDetailModal";
 import * as electron from "@/services/electron";
+
+// Type for deployed hooks from settings.json
+interface DeployedHook {
+  event: string;
+  matcher: string;
+  command: string;
+  type: string;
+}
 
 export function ProjectSelector() {
   const [gitUrl, setGitUrl] = useState("");
@@ -21,6 +30,8 @@ export function ProjectSelector() {
   const [globalClaudeInfo, setGlobalClaudeInfo] = useState<GlobalClaudeInfo | null>(null);
   const [agents, setAgents] = useState<AgentFile[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [hooks, setHooks] = useState<DeployedHook[]>([]);
+  const [mcpServers, setMcpServers] = useState<McpServer[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<AgentFile | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
   const [loadingConfig, setLoadingConfig] = useState(false);
@@ -40,13 +51,15 @@ export function ProjectSelector() {
     };
     loadGlobalClaudeConfig();
 
-    // Load project Claude config and deployed agents/skills
+    // Load project Claude config and deployed agents/skills/hooks/mcps
     if (projectPath) {
       loadProjectConfiguration();
     } else {
       setProjectClaudeInfo(null);
       setAgents([]);
       setSkills([]);
+      setHooks([]);
+      setMcpServers([]);
     }
   }, [projectPath]);
 
@@ -55,15 +68,19 @@ export function ProjectSelector() {
 
     setLoadingConfig(true);
     try {
-      const [claudeInfo, agentFiles, skillFiles] = await Promise.all([
+      const [claudeInfo, agentFiles, skillFiles, hookList, mcpList] = await Promise.all([
         electron.getClaudeInfo(projectPath),
         electron.listAgentFiles(projectPath),
         electron.listSkills(projectPath),
+        electron.listHooks(projectPath).catch(() => [] as DeployedHook[]),
+        electron.listMcpServers(projectPath).catch(() => [] as McpServer[]),
       ]);
 
       setProjectClaudeInfo(claudeInfo);
       setAgents(agentFiles);
       setSkills(skillFiles);
+      setHooks(hookList);
+      setMcpServers(mcpList);
     } catch (err) {
       console.error("Failed to load project configuration:", err);
     } finally {
@@ -653,6 +670,114 @@ export function ProjectSelector() {
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Deployed Hooks - Detailed Table */}
+      {projectPath && hooks.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Code className="h-4 w-4" />
+              Deployed Hooks ({hooks.length})
+            </CardTitle>
+            <CardDescription>
+              Hooks in .claude/settings.json
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingConfig ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {hooks.map((hook, index) => (
+                  <div
+                    key={`${hook.event}-${hook.matcher}-${index}`}
+                    className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{hook.event}</span>
+                        <Badge variant="outline" className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700">
+                          {hook.type}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5 font-mono">
+                        {hook.matcher || "*"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      <code className="text-xs bg-muted px-2 py-1 rounded truncate max-w-[200px]">
+                        {hook.command}
+                      </code>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Deployed MCP Servers - Detailed Table */}
+      {projectPath && mcpServers.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Server className="h-4 w-4" />
+              Deployed MCP Servers ({mcpServers.length})
+            </CardTitle>
+            <CardDescription>
+              MCP servers in .mcp.json
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingConfig ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {mcpServers.map((mcp) => (
+                  <div
+                    key={mcp.id}
+                    className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{mcp.name}</span>
+                        <Badge variant="outline" className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700">
+                          {mcp.type}
+                        </Badge>
+                        {mcp.category && (
+                          <Badge variant="outline" className="text-xs">
+                            {mcp.category}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {mcp.description || "No description"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      {mcp.type === "stdio" && mcp.command && (
+                        <code className="text-xs bg-muted px-2 py-1 rounded truncate max-w-[200px]">
+                          {mcp.command}
+                        </code>
+                      )}
+                      {(mcp.type === "http" || mcp.type === "sse") && mcp.url && (
+                        <code className="text-xs bg-muted px-2 py-1 rounded truncate max-w-[200px]">
+                          {mcp.url}
+                        </code>
+                      )}
                     </div>
                   </div>
                 ))}
