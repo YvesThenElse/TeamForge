@@ -1,22 +1,24 @@
 import { useState, useRef, useEffect } from "react";
-import { Shield, AlertTriangle, Users, Zap, Code, Trash2, Settings, X } from "lucide-react";
+import { Shield, AlertTriangle, Users, Zap, Code, Server, Trash2, Settings, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import type { ElementSecurity } from "@/types/team";
 import type { Agent } from "@/types";
 import type { Skill } from "@/types/skill";
 import type { Hook } from "@/types/hook";
+import type { McpServer } from "@/types/mcp";
 
 interface TeamElementCardProps {
-  type: "agent" | "skill" | "hook" | "security";
+  type: "agent" | "skill" | "hook" | "mcp" | "security";
   id: string;
   library?: Agent[]; // For agents
   skillLibrary?: Skill[]; // For skills
   hookLibrary?: Hook[]; // For hooks
+  mcpLibrary?: McpServer[]; // For MCP servers
   security?: ElementSecurity;
   configured?: boolean; // For global security
   onRemove: () => void;
-  onConfigureSecurity: () => void;
+  onConfigureSecurity?: () => void; // Optional for MCP
 }
 
 const CARD_STYLES = {
@@ -47,6 +49,15 @@ const CARD_STYLES = {
     size: "", // Standard card
     label: "Hook",
   },
+  mcp: {
+    bg: "bg-gradient-to-br from-purple-50 to-violet-100 dark:from-purple-950/40 dark:to-violet-900/30",
+    border: "border-purple-200 dark:border-purple-700",
+    icon: Server,
+    iconColor: "text-purple-600 dark:text-purple-400",
+    iconBg: "bg-purple-100 dark:bg-purple-900/50",
+    size: "", // Standard card
+    label: "MCP",
+  },
   security: {
     bg: "bg-gradient-to-br from-rose-50 to-red-100 dark:from-rose-950/40 dark:to-red-900/30",
     border: "border-rose-200 dark:border-rose-700",
@@ -64,6 +75,7 @@ export function TeamElementCard({
   library,
   skillLibrary,
   hookLibrary,
+  mcpLibrary,
   security,
   configured,
   onRemove,
@@ -99,6 +111,12 @@ export function TeamElementCard({
     name = hook?.name || id;
     description = hook?.description || "";
     category = hook?.category || "";
+  } else if (type === "mcp" && mcpLibrary) {
+    const mcp = mcpLibrary.find((m) => m.id === id);
+    name = mcp?.name || id;
+    description = mcp?.description || "";
+    category = mcp?.category || "";
+    tags = mcp?.tags || [];
   } else if (type === "security") {
     name = "Global Security";
     description = "Configure global security settings including permissions (allow/deny/ask rules) and environment variables.";
@@ -153,7 +171,9 @@ export function TeamElementCard({
 
   const handleConfigureSecurity = () => {
     setContextMenu(null);
-    onConfigureSecurity();
+    if (onConfigureSecurity) {
+      onConfigureSecurity();
+    }
   };
 
   const handleRemove = () => {
@@ -210,13 +230,16 @@ export function TeamElementCard({
             top: contextMenu.y,
           }}
         >
-          <button
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-700"
-            onClick={handleConfigureSecurity}
-          >
-            <Settings className="h-4 w-4 text-blue-600" />
-            <span>Configure Security</span>
-          </button>
+          {/* MCP doesn't have security config */}
+          {type !== "mcp" && onConfigureSecurity && (
+            <button
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={handleConfigureSecurity}
+            >
+              <Settings className="h-4 w-4 text-blue-600" />
+              <span>Configure Security</span>
+            </button>
+          )}
           {type !== "security" && (
             <button
               className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -287,23 +310,25 @@ export function TeamElementCard({
                 </div>
               )}
 
-              {/* Security status */}
-              <div>
-                <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">Security</h4>
-                {hasWarning ? (
-                  <div className="flex items-center gap-2 text-amber-600">
-                    <AlertTriangle className="h-4 w-4" />
-                    <span className="text-sm">Not configured</span>
-                  </div>
-                ) : (security?.configured || configured) ? (
-                  <div className="flex items-center gap-2 text-emerald-600">
-                    <Shield className="h-4 w-4" />
-                    <span className="text-sm">Configured</span>
-                  </div>
-                ) : (
-                  <span className="text-sm text-gray-500">No security rules</span>
-                )}
-              </div>
+              {/* Security status - not applicable for MCP */}
+              {type !== "mcp" && (
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">Security</h4>
+                  {hasWarning ? (
+                    <div className="flex items-center gap-2 text-amber-600">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span className="text-sm">Not configured</span>
+                    </div>
+                  ) : (security?.configured || configured) ? (
+                    <div className="flex items-center gap-2 text-emerald-600">
+                      <Shield className="h-4 w-4" />
+                      <span className="text-sm">Configured</span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-500">No security rules</span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Footer */}
@@ -311,10 +336,12 @@ export function TeamElementCard({
               <Button variant="outline" size="sm" onClick={() => setShowDetails(false)}>
                 Close
               </Button>
-              <Button size="sm" onClick={() => { setShowDetails(false); onConfigureSecurity(); }}>
-                <Settings className="h-4 w-4 mr-1" />
-                Configure
-              </Button>
+              {type !== "mcp" && onConfigureSecurity && (
+                <Button size="sm" onClick={() => { setShowDetails(false); onConfigureSecurity(); }}>
+                  <Settings className="h-4 w-4 mr-1" />
+                  Configure
+                </Button>
+              )}
             </div>
           </div>
         </div>

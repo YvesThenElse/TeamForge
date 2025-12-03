@@ -13,6 +13,7 @@ import type { Skill, SkillFrontmatter } from "@/types/skill";
 import type { Team } from "@/types/team";
 import type { Hook } from "@/types/hook";
 import type { ClaudeSettings, SettingsFile } from "@/types/claudeSettings";
+import type { McpServer } from "@/types/mcp";
 
 // TeamForge project-level settings type
 export interface TeamforgeSettings {
@@ -39,6 +40,14 @@ export interface TeamforgeSettings {
   hookDevPath: string;
   hookCachePath: string;
   hookLastSync: string | null;
+
+  // MCP Source Settings
+  mcpRepoUrl: string;
+  mcpRepoBranch: string;
+  mcpSourcePath: string;
+  mcpDevPath: string;
+  mcpCachePath: string;
+  mcpLastSync: string | null;
 
   // Application Preferences
   autoSync: boolean;
@@ -196,6 +205,15 @@ declare global {
         settingsGenerated: boolean;
         localSettingsGenerated: boolean;
       }>;
+      generateTeamMcpConfig: (
+        projectPath: string,
+        teamId: string,
+        mcpLibrary: McpServer[]
+      ) => Promise<{
+        success: boolean;
+        mcpConfigGenerated: boolean;
+        serversCount: number;
+      }>;
 
       // Agent Repository commands
       syncAgentRepository: (repoUrl: string, branch: string, cachePath?: string, projectPath?: string, sourcePath?: string) => Promise<{
@@ -254,6 +272,13 @@ declare global {
       ) => Promise<string>;
       hookDirExists: (projectPath: string) => Promise<boolean>;
       ensureHooksDir: (projectPath: string) => Promise<string>;
+
+      // MCP Server commands
+      listMcpServers: (projectPath: string) => Promise<McpServer[]>;
+      loadTemplateMcps: (devMode?: boolean, cachePath?: string, devPath?: string, projectPath?: string, sourcePath?: string) => Promise<McpServer[]>;
+      createMcpTemplate: (mcp: Partial<McpServer>, devPath?: string, projectPath?: string) => Promise<{ success: boolean; path: string; mcpId: string; message: string }>;
+      updateMcpTemplate: (mcpId: string, mcp: Partial<McpServer>, devPath?: string, projectPath?: string) => Promise<{ success: boolean; path: string; message: string }>;
+      deleteMcpTemplate: (mcpId: string, devPath?: string, projectPath?: string) => Promise<{ success: boolean; message: string }>;
 
       // TeamForge Settings commands (project-level .teamforge/settings.json)
       loadTeamforgeSettings: (projectPath: string) => Promise<{
@@ -708,6 +733,14 @@ export async function generateTeamSettings(
   return window.electronAPI.generateTeamSettings(projectPath, teamId, hookLibrary);
 }
 
+export async function generateTeamMcpConfig(
+  projectPath: string,
+  teamId: string,
+  mcpLibrary: McpServer[]
+): Promise<{ success: boolean; mcpConfigGenerated: boolean; serversCount: number }> {
+  return window.electronAPI.generateTeamMcpConfig(projectPath, teamId, mcpLibrary);
+}
+
 // ============================================================================
 // Agent Repository Commands
 // ============================================================================
@@ -806,6 +839,62 @@ export async function hookDirExists(projectPath: string): Promise<boolean> {
 
 export async function ensureHooksDir(projectPath: string): Promise<string> {
   return window.electronAPI.ensureHooksDir(projectPath);
+}
+
+// ============================================================================
+// MCP Server Commands
+// ============================================================================
+
+export async function listMcpServers(projectPath: string): Promise<McpServer[]> {
+  return window.electronAPI.listMcpServers(projectPath);
+}
+
+export async function loadTemplateMcps(
+  devMode?: boolean,
+  cachePath?: string,
+  devPath?: string,
+  projectPath?: string,
+  sourcePath?: string
+): Promise<McpServer[]> {
+  return window.electronAPI.loadTemplateMcps(devMode, cachePath, devPath, projectPath, sourcePath);
+}
+
+// Developer Mode - MCP Template CRUD
+export async function createMcpTemplate(
+  mcp: Partial<McpServer>,
+  devPath?: string,
+  projectPath?: string
+): Promise<{
+  success: boolean;
+  path: string;
+  mcpId: string;
+  message: string;
+}> {
+  return window.electronAPI.createMcpTemplate(mcp, devPath, projectPath);
+}
+
+export async function updateMcpTemplate(
+  mcpId: string,
+  mcp: Partial<McpServer>,
+  devPath?: string,
+  projectPath?: string
+): Promise<{
+  success: boolean;
+  path: string;
+  message: string;
+}> {
+  return window.electronAPI.updateMcpTemplate(mcpId, mcp, devPath, projectPath);
+}
+
+export async function deleteMcpTemplate(
+  mcpId: string,
+  devPath?: string,
+  projectPath?: string
+): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  return window.electronAPI.deleteMcpTemplate(mcpId, devPath, projectPath);
 }
 
 // ============================================================================

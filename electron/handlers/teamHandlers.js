@@ -318,6 +318,7 @@ export function registerTeamHandlers(ipcMain) {
         agents: team.agents || [],
         skills: team.skills || [],
         hooks: team.hooks || [],
+        mcpServers: team.mcpServers || [],
         security: team.security || { configured: false },
         // v1 legacy structure (backward compatibility)
         workflow: team.workflow || [],
@@ -704,6 +705,81 @@ model: ${agent.model}
       };
     } catch (error) {
       throw new Error(`Failed to generate settings: ${error.message}`);
+    }
+  });
+
+  /**
+   * Generate .mcp.json with MCP server configurations
+   * Creates .mcp.json in the team directory
+   */
+  ipcMain.handle('team:generateMcpConfig', async (event, { projectPath, teamId, mcpLibrary }) => {
+    try {
+      const teamPath = getTeamPath(projectPath, teamId);
+
+      // Load team metadata
+      const metadataPath = getTeamMetadataPath(projectPath, teamId);
+      const content = await fs.readFile(metadataPath, 'utf-8');
+      const team = JSON.parse(content);
+
+      // Build .mcp.json structure
+      const mcpConfig = {
+        mcpServers: {},
+      };
+
+      // Generate MCP server configurations from mcpServers array
+      for (const mcpItem of team.mcpServers || []) {
+        const mcp = mcpLibrary.find(m => m.id === mcpItem.mcpId);
+
+        if (!mcp) {
+          console.warn(`MCP server not found in library: ${mcpItem.mcpId}`);
+          continue;
+        }
+
+        // Build MCP server config following Claude Code's official format
+        const serverConfig = {
+          type: mcp.type,
+        };
+
+        // Add type-specific configuration
+        if (mcp.type === 'stdio') {
+          if (mcp.command) serverConfig.command = mcp.command;
+          if (mcp.args && mcp.args.length > 0) serverConfig.args = mcp.args;
+        } else {
+          // http or sse
+          if (mcp.url) serverConfig.url = mcp.url;
+          if (mcp.headers && Object.keys(mcp.headers).length > 0) {
+            serverConfig.headers = mcp.headers;
+          }
+        }
+
+        // Add environment variables if present
+        if (mcp.env && Object.keys(mcp.env).length > 0) {
+          serverConfig.env = mcp.env;
+        }
+
+        // Use MCP id as the key in mcpServers
+        mcpConfig.mcpServers[mcp.id] = serverConfig;
+      }
+
+      // Only write .mcp.json if there are MCP servers configured
+      if (Object.keys(mcpConfig.mcpServers).length > 0) {
+        const mcpConfigPath = path.join(teamPath, '.mcp.json');
+        await fs.writeFile(mcpConfigPath, JSON.stringify(mcpConfig, null, 2), 'utf-8');
+
+        return {
+          success: true,
+          mcpConfigGenerated: true,
+          serversCount: Object.keys(mcpConfig.mcpServers).length,
+        };
+      }
+
+      return {
+        success: true,
+        mcpConfigGenerated: false,
+        serversCount: 0,
+      };
+    } catch (error) {
+      throw new Error(`Failed to generate MCP config: ${error.message}`);
     }
   });
 }

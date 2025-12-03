@@ -11,18 +11,22 @@ import {
   saveTeam,
   loadTemplateSkills,
   loadTemplateHooks,
+  loadTemplateMcps,
   generateTeamAgents,
   generateTeamSkills,
-  generateTeamSettings
+  generateTeamSettings,
+  generateTeamMcpConfig
 } from "@/services/electron";
-import type { Team, TeamAgent, TeamSkill, TeamHook, GlobalSecurity, ElementSecurity } from "@/types/team";
+import type { Team, TeamAgent, TeamSkill, TeamHook, TeamMcp, GlobalSecurity, ElementSecurity } from "@/types/team";
 import type { Skill } from "@/types/skill";
 import type { Hook } from "@/types/hook";
+import type { McpServer } from "@/types/mcp";
 import { TeamElementCard } from "./TeamElementCard";
 import { TeamContextMenu } from "./TeamContextMenu";
 import { AgentSelectorPopup } from "./AgentSelectorPopup";
 import { SkillSelectorPopup } from "./SkillSelectorPopup";
 import { HookSelectorPopup } from "./HookSelectorPopup";
+import { McpSelectorPopup } from "./McpSelectorPopup";
 import { SecurityConfigPopup } from "./SecurityConfigPopup";
 
 interface TeamEditorProps {
@@ -40,7 +44,10 @@ export function TeamEditor({ onClose }: TeamEditorProps) {
     skillSourcePath,
     hookCachePath,
     hookDevPath,
-    hookSourcePath
+    hookSourcePath,
+    mcpCachePath,
+    mcpDevPath,
+    mcpSourcePath
   } = useSettingsStore();
 
   // Form state
@@ -49,6 +56,7 @@ export function TeamEditor({ onClose }: TeamEditorProps) {
   const [agents, setAgents] = useState<TeamAgent[]>(currentTeam?.agents || []);
   const [skills, setSkills] = useState<TeamSkill[]>(currentTeam?.skills || []);
   const [hooks, setHooks] = useState<TeamHook[]>(currentTeam?.hooks || []);
+  const [mcpServers, setMcpServers] = useState<TeamMcp[]>(currentTeam?.mcpServers || []);
   const [security, setSecurity] = useState<GlobalSecurity>(
     currentTeam?.security || { configured: false }
   );
@@ -56,6 +64,7 @@ export function TeamEditor({ onClose }: TeamEditorProps) {
   // Libraries
   const [skillLibrary, setSkillLibrary] = useState<Skill[]>([]);
   const [hookLibrary, setHookLibrary] = useState<Hook[]>([]);
+  const [mcpLibrary, setMcpLibrary] = useState<McpServer[]>([]);
 
   // UI state
   const [hasChanges, setHasChanges] = useState(false);
@@ -63,6 +72,7 @@ export function TeamEditor({ onClose }: TeamEditorProps) {
   const [showAgentSelector, setShowAgentSelector] = useState(false);
   const [showSkillSelector, setShowSkillSelector] = useState(false);
   const [showHookSelector, setShowHookSelector] = useState(false);
+  const [showMcpSelector, setShowMcpSelector] = useState(false);
   const [showSecurityConfig, setShowSecurityConfig] = useState(false);
   const [selectedElement, setSelectedElement] = useState<{
     type: "agent" | "skill" | "hook" | "security";
@@ -99,12 +109,25 @@ export function TeamEditor({ onClose }: TeamEditorProps) {
       } catch (error) {
         console.error("Failed to load hook library:", error);
       }
+
+      try {
+        const mcpTemplates = await loadTemplateMcps(
+          developerMode,
+          mcpCachePath,
+          mcpDevPath,
+          projectPath ?? undefined,
+          mcpSourcePath
+        );
+        setMcpLibrary(mcpTemplates);
+      } catch (error) {
+        console.error("Failed to load MCP library:", error);
+      }
     };
 
     if (projectPath) {
       loadLibraries();
     }
-  }, [projectPath, developerMode, skillCachePath, skillDevPath, skillSourcePath, hookCachePath, hookDevPath, hookSourcePath]);
+  }, [projectPath, developerMode, skillCachePath, skillDevPath, skillSourcePath, hookCachePath, hookDevPath, hookSourcePath, mcpCachePath, mcpDevPath, mcpSourcePath]);
 
   // Track changes
   useEffect(() => {
@@ -116,10 +139,11 @@ export function TeamEditor({ onClose }: TeamEditorProps) {
       JSON.stringify(agents) !== JSON.stringify(currentTeam.agents || []) ||
       JSON.stringify(skills) !== JSON.stringify(currentTeam.skills || []) ||
       JSON.stringify(hooks) !== JSON.stringify(currentTeam.hooks || []) ||
+      JSON.stringify(mcpServers) !== JSON.stringify(currentTeam.mcpServers || []) ||
       JSON.stringify(security) !== JSON.stringify(currentTeam.security || {});
 
     setHasChanges(changed);
-  }, [teamName, teamDescription, agents, skills, hooks, security, currentTeam]);
+  }, [teamName, teamDescription, agents, skills, hooks, mcpServers, security, currentTeam]);
 
   // Handle save
   const handleSave = async () => {
@@ -138,6 +162,7 @@ export function TeamEditor({ onClose }: TeamEditorProps) {
         agents,
         skills,
         hooks,
+        mcpServers,
         security,
         updatedAt: new Date().toISOString(),
       };
@@ -159,6 +184,11 @@ export function TeamEditor({ onClose }: TeamEditorProps) {
       // Generate settings.json with hooks and security
       if (hooks.length > 0 || security.configured) {
         await generateTeamSettings(projectPath, teamId, hookLibrary);
+      }
+
+      // Generate .mcp.json with MCP servers
+      if (mcpServers.length > 0) {
+        await generateTeamMcpConfig(projectPath, teamId, mcpLibrary);
       }
 
       setHasChanges(false);
@@ -214,6 +244,10 @@ export function TeamEditor({ onClose }: TeamEditorProps) {
       parts.push(`${hooks.length} hook${hooks.length > 1 ? "s" : ""}`);
     }
 
+    if (mcpServers.length > 0) {
+      parts.push(`${mcpServers.length} MCP server${mcpServers.length > 1 ? "s" : ""}`);
+    }
+
     if (security.configured) {
       parts.push("with security configuration");
     }
@@ -251,6 +285,11 @@ export function TeamEditor({ onClose }: TeamEditorProps) {
     setContextMenu(null);
   };
 
+  const handleShowMcpSelector = () => {
+    setShowMcpSelector(true);
+    setContextMenu(null);
+  };
+
   const handleAddSecurity = () => {
     setSelectedElement({ type: "security" });
     setShowSecurityConfig(true);
@@ -268,6 +307,10 @@ export function TeamEditor({ onClose }: TeamEditorProps) {
 
   const handleRemoveHook = (hookId: string) => {
     setHooks(hooks.filter((h) => h.hookId !== hookId));
+  };
+
+  const handleRemoveMcp = (mcpId: string) => {
+    setMcpServers(mcpServers.filter((m) => m.mcpId !== mcpId));
   };
 
   const handleConfigureElementSecurity = (
@@ -304,6 +347,15 @@ export function TeamEditor({ onClose }: TeamEditorProps) {
       order: maxOrder + 1,
     };
     setHooks([...hooks, newHook]);
+  };
+
+  const handleAddMcp = (mcpId: string) => {
+    const maxOrder = mcpServers.length > 0 ? Math.max(...mcpServers.map((m) => m.order)) : 0;
+    const newMcp: TeamMcp = {
+      mcpId,
+      order: maxOrder + 1,
+    };
+    setMcpServers([...mcpServers, newMcp]);
   };
 
   // Save security config
@@ -501,6 +553,19 @@ export function TeamEditor({ onClose }: TeamEditorProps) {
               />
             ))}
 
+          {/* MCP Servers */}
+          {mcpServers
+            .sort((a, b) => a.order - b.order)
+            .map((mcp) => (
+              <TeamElementCard
+                key={mcp.mcpId}
+                type="mcp"
+                id={mcp.mcpId}
+                mcpLibrary={mcpLibrary}
+                onRemove={() => handleRemoveMcp(mcp.mcpId)}
+              />
+            ))}
+
           {/* Global Security */}
           <TeamElementCard
             type="security"
@@ -513,11 +578,11 @@ export function TeamEditor({ onClose }: TeamEditorProps) {
           />
 
           {/* Empty state hint */}
-          {agents.length === 0 && skills.length === 0 && hooks.length === 0 && (
+          {agents.length === 0 && skills.length === 0 && hooks.length === 0 && mcpServers.length === 0 && (
             <div className="col-span-full flex flex-col items-center justify-center py-8 text-center">
               <div className="text-4xl mb-3 opacity-30">+</div>
               <div className="text-sm text-muted-foreground">
-                Right-click to add agents, skills or hooks
+                Right-click to add agents, skills, hooks, or MCP servers
               </div>
             </div>
           )}
@@ -533,6 +598,7 @@ export function TeamEditor({ onClose }: TeamEditorProps) {
           onAddAgent={handleShowAgentSelector}
           onAddSkill={handleShowSkillSelector}
           onAddHook={handleShowHookSelector}
+          onAddMcp={handleShowMcpSelector}
           onAddSecurity={handleAddSecurity}
         />
       )}
@@ -564,6 +630,16 @@ export function TeamEditor({ onClose }: TeamEditorProps) {
           selectedHookIds={hooks.map((h) => h.hookId)}
           onSelect={handleAddHook}
           onClose={() => setShowHookSelector(false)}
+        />
+      )}
+
+      {/* MCP Selector Popup */}
+      {showMcpSelector && (
+        <McpSelectorPopup
+          mcps={mcpLibrary}
+          selectedMcpIds={mcpServers.map((m) => m.mcpId)}
+          onSelect={handleAddMcp}
+          onClose={() => setShowMcpSelector(false)}
         />
       )}
 

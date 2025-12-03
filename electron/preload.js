@@ -129,6 +129,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('team:getDeployed', { projectPath }),
   generateTeamAgents: (projectPath, teamId, agentLibrary) =>
     ipcRenderer.invoke('team:generateAgents', { projectPath, teamId, agentLibrary }),
+  generateTeamMcpConfig: (projectPath, teamId, mcpLibrary) =>
+    ipcRenderer.invoke('team:generateMcpConfig', { projectPath, teamId, mcpLibrary }),
 
   // Agent Repository commands
   syncAgentRepository: (repoUrl, branch, cachePath, projectPath, sourcePath) =>
@@ -164,6 +166,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('hook:updateTemplate', { hookId, hook }),
   deleteHookTemplate: (hookId) =>
     ipcRenderer.invoke('hook:deleteTemplate', { hookId }),
+
+  // MCP Server commands
+  listMcpServers: (projectPath) =>
+    ipcRenderer.invoke('mcp:list', { projectPath }),
+  loadTemplateMcps: (devMode, cachePath, devPath, projectPath, sourcePath) =>
+    ipcRenderer.invoke('mcp:loadTemplates', { devMode, cachePath, devPath, projectPath, sourcePath }),
+  // Developer mode CRUD
+  createMcpTemplate: (mcp, devPath, projectPath) =>
+    ipcRenderer.invoke('mcp:createTemplate', { mcp, devPath, projectPath }),
+  updateMcpTemplate: (mcpId, mcp, devPath, projectPath) =>
+    ipcRenderer.invoke('mcp:updateTemplate', { mcpId, mcp, devPath, projectPath }),
+  deleteMcpTemplate: (mcpId, devPath, projectPath) =>
+    ipcRenderer.invoke('mcp:deleteTemplate', { mcpId, devPath, projectPath }),
 
   // TeamForge Settings commands (project-level settings.json)
   loadTeamforgeSettings: (projectPath) =>

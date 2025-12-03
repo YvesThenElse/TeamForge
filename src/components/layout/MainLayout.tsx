@@ -6,6 +6,7 @@ import { ConfigureAgentTab } from "@/components/agents/ConfigureAgentTab";
 import { ConfigureTeamTab } from "@/components/agents/ConfigureTeamTab";
 import { SkillsTab } from "@/components/skills/SkillsTab";
 import { HooksTab } from "@/components/hooks/HooksTab";
+import { McpTab } from "@/components/mcp/McpTab";
 import { ClaudeSettingsTab } from "@/components/claude-settings/ClaudeSettingsTab";
 import { SettingsTab } from "@/components/settings/SettingsTab";
 import { HelpTab } from "@/components/help/HelpTab";
@@ -13,7 +14,7 @@ import { useProjectStore } from "@/stores/projectStore";
 
 export function MainLayout() {
   const [currentStep, setCurrentStep] = useState<
-    "project" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "claude-settings" | "settings" | "help"
+    "project" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "mcp" | "claude-settings" | "settings" | "help"
   >("project");
 
   const { projectPath } = useProjectStore();
@@ -30,6 +31,8 @@ export function MainLayout() {
         return <SkillsTab />;
       case "hooks":
         return <HooksTab />;
+      case "mcp":
+        return <McpTab />;
       case "claude-settings":
         return <ClaudeSettingsTab />;
       case "settings":

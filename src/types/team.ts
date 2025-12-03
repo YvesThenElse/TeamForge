@@ -40,6 +40,11 @@ export interface TeamHook {
   security?: ElementSecurity;
 }
 
+export interface TeamMcp {
+  mcpId: string; // Reference to library MCP server
+  order: number;
+}
+
 export interface Team {
   id: string;
   name: string;
@@ -49,6 +54,7 @@ export interface Team {
   agents: TeamAgent[];
   skills: TeamSkill[];
   hooks: TeamHook[];
+  mcpServers: TeamMcp[];
   security: GlobalSecurity;
 
   // Metadata

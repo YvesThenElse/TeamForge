@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Users, Zap, Code, Shield, Shuffle } from "lucide-react";
+import { Users, Zap, Code, Shield, Shuffle, Server } from "lucide-react";
 
 interface TeamContextMenuProps {
   x: number;
@@ -8,6 +8,7 @@ interface TeamContextMenuProps {
   onAddAgent: () => void;
   onAddSkill: () => void;
   onAddHook: () => void;
+  onAddMcp?: () => void;
   onAddSecurity: () => void;
   onReorganize?: () => void;
 }
@@ -19,6 +20,7 @@ export function TeamContextMenu({
   onAddAgent,
   onAddSkill,
   onAddHook,
+  onAddMcp,
   onAddSecurity,
   onReorganize,
 }: TeamContextMenuProps) {
@@ -46,7 +48,12 @@ export function TeamContextMenu({
     };
   }, [onClose]);
 
-  const menuItems = [
+  const menuItems: Array<{
+    icon: any;
+    label: string;
+    onClick: () => void;
+    color: string;
+  }> = [
     {
       icon: Users,
       label: "Add Agent",
@@ -65,13 +72,23 @@ export function TeamContextMenu({
       onClick: onAddHook,
       color: "text-orange-600 dark:text-orange-400",
     },
-    {
-      icon: Shield,
-      label: "Configure Global Security",
-      onClick: onAddSecurity,
-      color: "text-red-600 dark:text-red-400",
-    },
   ];
+
+  if (onAddMcp) {
+    menuItems.push({
+      icon: Server,
+      label: "Add MCP Server",
+      onClick: onAddMcp,
+      color: "text-purple-600 dark:text-purple-400",
+    });
+  }
+
+  menuItems.push({
+    icon: Shield,
+    label: "Configure Global Security",
+    onClick: onAddSecurity,
+    color: "text-red-600 dark:text-red-400",
+  });
 
   if (onReorganize) {
     menuItems.push({

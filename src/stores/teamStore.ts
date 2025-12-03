@@ -54,6 +54,7 @@ export const useTeamStore = create<TeamState>((set, get) => ({
       agents: [],
       skills: [],
       hooks: [],
+      mcpServers: [],
       security: { configured: false },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

@@ -27,6 +27,14 @@ interface SettingsState {
   hookCachePath: string;
   hookLastSync: string | null;
 
+  // MCP Source Settings
+  mcpRepoUrl: string;
+  mcpRepoBranch: string;
+  mcpSourcePath: string;
+  mcpDevPath: string;
+  mcpCachePath: string;
+  mcpLastSync: string | null;
+
   // Application Preferences
   autoSync: boolean;
   theme: "light" | "dark" | "system";
@@ -73,6 +81,14 @@ interface SettingsState {
   setHookCachePath: (path: string) => void;
   setHookLastSync: (timestamp: string | null) => void;
 
+  // Actions - MCP
+  setMcpRepoUrl: (url: string) => void;
+  setMcpRepoBranch: (branch: string) => void;
+  setMcpSourcePath: (path: string) => void;
+  setMcpDevPath: (path: string) => void;
+  setMcpCachePath: (path: string) => void;
+  setMcpLastSync: (timestamp: string | null) => void;
+
   // Actions - Preferences
   setAutoSync: (autoSync: boolean) => void;
   setTheme: (theme: "light" | "dark" | "system") => void;
@@ -117,6 +133,14 @@ const DEFAULT_STATE = {
   hookDevPath: "",
   hookCachePath: `${DEFAULT_CACHE_PATH}/hooks`,
   hookLastSync: null,
+
+  // MCP source settings
+  mcpRepoUrl: "",
+  mcpRepoBranch: DEFAULT_BRANCH,
+  mcpSourcePath: "",
+  mcpDevPath: "",
+  mcpCachePath: `${DEFAULT_CACHE_PATH}/mcps`,
+  mcpLastSync: null,
 
   // Application preferences
   autoSync: false,
@@ -168,6 +192,14 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setHookCachePath: (path) => set({ hookCachePath: path }),
   setHookLastSync: (timestamp) => set({ hookLastSync: timestamp }),
 
+  // Actions - MCP
+  setMcpRepoUrl: (url) => set({ mcpRepoUrl: url }),
+  setMcpRepoBranch: (branch) => set({ mcpRepoBranch: branch }),
+  setMcpSourcePath: (path) => set({ mcpSourcePath: path }),
+  setMcpDevPath: (path) => set({ mcpDevPath: path }),
+  setMcpCachePath: (path) => set({ mcpCachePath: path }),
+  setMcpLastSync: (timestamp) => set({ mcpLastSync: timestamp }),
+
   // Actions - Preferences
   setAutoSync: (autoSync) => set({ autoSync }),
   setTheme: (theme) => set({ theme }),
@@ -204,6 +236,12 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
           hookDevPath: result.settings.hookDevPath ?? DEFAULT_STATE.hookDevPath,
           hookCachePath: result.settings.hookCachePath ?? DEFAULT_STATE.hookCachePath,
           hookLastSync: result.settings.hookLastSync ?? DEFAULT_STATE.hookLastSync,
+          mcpRepoUrl: result.settings.mcpRepoUrl ?? DEFAULT_STATE.mcpRepoUrl,
+          mcpRepoBranch: result.settings.mcpRepoBranch ?? DEFAULT_STATE.mcpRepoBranch,
+          mcpSourcePath: result.settings.mcpSourcePath ?? DEFAULT_STATE.mcpSourcePath,
+          mcpDevPath: result.settings.mcpDevPath ?? DEFAULT_STATE.mcpDevPath,
+          mcpCachePath: result.settings.mcpCachePath ?? DEFAULT_STATE.mcpCachePath,
+          mcpLastSync: result.settings.mcpLastSync ?? DEFAULT_STATE.mcpLastSync,
           autoSync: result.settings.autoSync ?? DEFAULT_STATE.autoSync,
           theme: result.settings.theme ?? DEFAULT_STATE.theme,
           confirmDeploy: result.settings.confirmDeploy ?? DEFAULT_STATE.confirmDeploy,
@@ -253,6 +291,12 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
         hookDevPath: state.hookDevPath,
         hookCachePath: state.hookCachePath,
         hookLastSync: state.hookLastSync,
+        mcpRepoUrl: state.mcpRepoUrl,
+        mcpRepoBranch: state.mcpRepoBranch,
+        mcpSourcePath: state.mcpSourcePath,
+        mcpDevPath: state.mcpDevPath,
+        mcpCachePath: state.mcpCachePath,
+        mcpLastSync: state.mcpLastSync,
         autoSync: state.autoSync,
         theme: state.theme,
         confirmDeploy: state.confirmDeploy,

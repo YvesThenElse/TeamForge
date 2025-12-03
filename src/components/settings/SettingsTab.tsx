@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Settings, Sliders, Sparkles, Zap, Wrench } from "lucide-react";
+import { Settings, Sliders, Sparkles, Zap, Server, Wrench } from "lucide-react";
 import { AgentsSettingsTab } from "./AgentsSettingsTab";
 import { SkillsSettingsTab } from "./SkillsSettingsTab";
 import { HooksSettingsTab } from "./HooksSettingsTab";
+import { McpSettingsTab } from "./McpSettingsTab";
 import { PreferencesTab } from "./PreferencesTab";
 
-type SubTab = "agents" | "skills" | "hooks" | "preferences";
+type SubTab = "agents" | "skills" | "hooks" | "mcp" | "preferences";
 
 export function SettingsTab() {
   const [activeTab, setActiveTab] = useState<SubTab>("agents");
@@ -30,6 +31,12 @@ export function SettingsTab() {
       description: "Hooks repository and dev settings",
     },
     {
+      id: "mcp" as const,
+      label: "MCP",
+      icon: Server,
+      description: "MCP servers repository and dev settings",
+    },
+    {
       id: "preferences" as const,
       label: "Preferences",
       icon: Wrench,
@@ -45,6 +52,8 @@ export function SettingsTab() {
         return <SkillsSettingsTab />;
       case "hooks":
         return <HooksSettingsTab />;
+      case "mcp":
+        return <McpSettingsTab />;
       case "preferences":
         return <PreferencesTab />;
       default:
