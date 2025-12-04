@@ -14,6 +14,28 @@ const getDefaultAgentRepoPath = () => {
   return path.join(homeDir, '.teamforge', 'cache', 'agents');
 };
 
+// Recursively copy a directory
+async function copyDirectory(src, dest) {
+  await fs.mkdir(dest, { recursive: true });
+  const entries = await fs.readdir(src, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+
+    // Skip .git folder and other hidden files
+    if (entry.name.startsWith('.')) {
+      continue;
+    }
+
+    if (entry.isDirectory()) {
+      await copyDirectory(srcPath, destPath);
+    } else {
+      await fs.copyFile(srcPath, destPath);
+    }
+  }
+}
+
 // Count categories (folders) and files in a directory
 async function countRepoStats(repoPath) {
   try {
@@ -40,11 +62,14 @@ async function countRepoStats(repoPath) {
 }
 
 export function registerAgentRepositoryHandlers(ipcMain) {
-  // Clone or update agent repository
+  // Clone or update agent repository (clone to temp, then copy files)
   ipcMain.handle('agentRepo:sync', async (event, { repoUrl, branch = 'main', cachePath, projectPath, sourcePath }) => {
     // Clean up URL - remove trailing slashes
     const cleanRepoUrl = repoUrl?.trim().replace(/\/+$/, '');
-    console.log('[AgentRepo] Sync called with:', { repoUrl: cleanRepoUrl, branch, cachePath, projectPath });
+    console.log('[AgentRepo] Sync called with:', { repoUrl: cleanRepoUrl, branch, cachePath, projectPath, sourcePath });
+
+    // Create a unique temp folder for cloning
+    const tempDir = path.join(os.tmpdir(), `teamforge-sync-${Date.now()}`);
 
     try {
       // Resolve cache path - if relative, make it absolute from project path
@@ -59,46 +84,48 @@ export function registerAgentRepositoryHandlers(ipcMain) {
       }
       console.log('[AgentRepo] Resolved local path:', localPath);
 
-      // Check if directory exists
-      const exists = await fs
-        .access(localPath)
+      const git = simpleGit();
+
+      // Step 1: Clone repo to temp folder
+      console.log('[AgentRepo] Cloning repository to temp folder:', tempDir);
+      await fs.mkdir(tempDir, { recursive: true });
+      await git.clone(cleanRepoUrl, tempDir, ['--branch', branch, '--depth', '1']);
+
+      // Step 2: Determine source folder in temp
+      let sourceFolder = tempDir;
+      if (sourcePath) {
+        sourceFolder = path.join(tempDir, sourcePath);
+      }
+
+      // Verify source folder exists
+      const sourceExists = await fs
+        .access(sourceFolder)
         .then(() => true)
         .catch(() => false);
 
-      const git = simpleGit();
+      if (!sourceExists) {
+        // List available directories to help the user
+        const entries = await fs.readdir(tempDir, { withFileTypes: true });
+        const availableDirs = entries
+          .filter(e => e.isDirectory() && !e.name.startsWith('.'))
+          .map(e => e.name);
 
-      if (exists) {
-        // Directory exists, try to pull
-        console.log('[AgentRepo] Directory exists, pulling latest changes from', cleanRepoUrl);
-        const repoGit = simpleGit(localPath);
+        const suggestion = availableDirs.length > 0
+          ? `Available directories: ${availableDirs.join(', ')}`
+          : 'Repository appears to be empty or contains only files at root level';
 
-        // Check if it's a git repo
-        const isRepo = await repoGit.checkIsRepo();
-        if (!isRepo) {
-          // Not a repo, delete and clone fresh
-          console.log('[AgentRepo] Not a git repo, cloning fresh');
-          await fs.rm(localPath, { recursive: true, force: true });
-          await git.clone(cleanRepoUrl, localPath, ['--branch', branch]);
-        } else {
-          // Pull latest changes
-          console.log('[AgentRepo] Pulling from origin', branch);
-          await repoGit.fetch();
-          await repoGit.checkout(branch);
-          await repoGit.pull('origin', branch);
-        }
-      } else {
-        // Directory doesn't exist, clone
-        console.log('[AgentRepo] Cloning repository from', cleanRepoUrl, 'to', localPath);
-        await fs.mkdir(localPath, { recursive: true });
-        await git.clone(cleanRepoUrl, localPath, ['--branch', branch]);
+        throw new Error(`Source path "${sourcePath}" not found in repository. ${suggestion}`);
       }
 
-      // Count stats after sync - use sourcePath if provided
-      let statsPath = localPath;
-      if (sourcePath) {
-        statsPath = path.join(localPath, sourcePath);
-      }
-      const stats = await countRepoStats(statsPath);
+      // Step 3: Clear existing cache and copy files
+      console.log('[AgentRepo] Clearing existing cache at:', localPath);
+      await fs.rm(localPath, { recursive: true, force: true });
+
+      console.log('[AgentRepo] Copying files from', sourceFolder, 'to', localPath);
+      await copyDirectory(sourceFolder, localPath);
+
+      // Count stats after sync
+      const stats = await countRepoStats(localPath);
 
       return {
         success: true,
@@ -111,6 +138,14 @@ export function registerAgentRepositoryHandlers(ipcMain) {
     } catch (error) {
       console.error('[AgentRepo] Sync failed:', error);
       throw new Error(`Failed to sync agent repository: ${error.message}`);
+    } finally {
+      // Step 4: Clean up temp folder
+      try {
+        console.log('[AgentRepo] Cleaning up temp folder:', tempDir);
+        await fs.rm(tempDir, { recursive: true, force: true });
+      } catch (cleanupError) {
+        console.warn('[AgentRepo] Failed to clean up temp folder:', cleanupError);
+      }
     }
   });
 
@@ -119,7 +154,7 @@ export function registerAgentRepositoryHandlers(ipcMain) {
     return getDefaultAgentRepoPath();
   });
 
-  // Check repository status
+  // Check cache status (no longer a git repo, just file cache)
   ipcMain.handle('agentRepo:status', async () => {
     try {
       const localPath = getDefaultAgentRepoPath();
@@ -133,33 +168,18 @@ export function registerAgentRepositoryHandlers(ipcMain) {
         return {
           exists: false,
           path: localPath,
-          message: 'Repository not cloned yet',
+          message: 'Cache not synced yet',
         };
       }
 
-      const git = simpleGit(localPath);
-      const isRepo = await git.checkIsRepo();
-
-      if (!isRepo) {
-        return {
-          exists: true,
-          isRepo: false,
-          path: localPath,
-          message: 'Directory exists but is not a git repository',
-        };
-      }
-
-      const status = await git.status();
-      const remotes = await git.getRemotes(true);
+      const stats = await countRepoStats(localPath);
 
       return {
         exists: true,
-        isRepo: true,
         path: localPath,
-        branch: status.current,
-        ahead: status.ahead,
-        behind: status.behind,
-        remotes: remotes.map((r) => ({ name: r.name, url: r.refs.fetch })),
+        categories: stats.categories,
+        files: stats.files,
+        message: `Cache contains ${stats.categories} categories and ${stats.files} files`,
       };
     } catch (error) {
       console.error('[AgentRepo] Status check failed:', error);
@@ -183,10 +203,8 @@ export function registerAgentRepositoryHandlers(ipcMain) {
         }
       }
 
-      // Add source path subdirectory if specified
-      if (sourcePath) {
-        localPath = path.join(localPath, sourcePath);
-      }
+      // Note: sourcePath is only used during sync - the cache already contains
+      // the extracted files from sourcePath, so we read stats directly from cache root
 
       console.log('[AgentRepo] Getting stats for path:', localPath);
 

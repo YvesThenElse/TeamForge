@@ -142,13 +142,9 @@ async function loadAgentLibrary(forceReload = false, devMode = false, cachePath 
       try {
         // Check if cache directory exists
         await fs.access(repoPath);
-        // Apply sourcePath if provided (subdirectory within the repo)
-        if (sourcePath) {
-          templatesDir = path.join(repoPath, sourcePath);
-          console.log('[AgentHandlers] Using sourcePath, loading from:', templatesDir);
-        } else {
-          templatesDir = repoPath;
-        }
+        // Note: sourcePath is only used during sync - the cache already contains
+        // the extracted files from sourcePath, so we load directly from cache root
+        templatesDir = repoPath;
         source = 'cache';
         console.log('[AgentHandlers] Loading agents from cache:', templatesDir);
       } catch {

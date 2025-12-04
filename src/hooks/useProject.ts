@@ -97,26 +97,6 @@ export function useProject() {
     []
   );
 
-  const cloneRepository = useCallback(
-    async (url: string, targetPath: string) => {
-      setIsAnalyzing(true);
-      setError(null);
-
-      try {
-        const result = await electron.cloneRepo(url, targetPath);
-        setProjectPath(targetPath);
-        return result;
-      } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : "Clone failed";
-        setError(errorMsg);
-        throw new Error(errorMsg);
-      } finally {
-        setIsAnalyzing(false);
-      }
-    },
-    [setProjectPath, setIsAnalyzing, setError]
-  );
-
   return {
     // State
     currentProject,
@@ -129,7 +109,6 @@ export function useProject() {
     selectProjectFolder,
     analyzeProjectFolder,
     checkIfGitRepo,
-    cloneRepository,
     clearProject,
   };
 }

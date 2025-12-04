@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
-import { FolderOpen, GitBranch, Loader2, Clock, X, CheckCircle, XCircle, Info, ExternalLink, Wrench, BookOpen, Eye, Code, Server } from "lucide-react";
+import { FolderOpen, Loader2, Clock, X, CheckCircle, XCircle, Info, ExternalLink, Wrench, BookOpen, Eye, Code, Server } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { useProject } from "@/hooks/useProject";
@@ -23,8 +22,6 @@ interface DeployedHook {
 }
 
 export function ProjectSelector() {
-  const [gitUrl, setGitUrl] = useState("");
-  const [targetPath, setTargetPath] = useState("");
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
   const [projectClaudeInfo, setProjectClaudeInfo] = useState<ClaudeInfo | null>(null);
   const [globalClaudeInfo, setGlobalClaudeInfo] = useState<GlobalClaudeInfo | null>(null);
@@ -35,7 +32,7 @@ export function ProjectSelector() {
   const [selectedAgent, setSelectedAgent] = useState<AgentFile | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
   const [loadingConfig, setLoadingConfig] = useState(false);
-  const { projectPath, analysis, isAnalyzing, selectProjectFolder, analyzeProjectFolder, cloneRepository } = useProject();
+  const { projectPath, analysis, isAnalyzing, selectProjectFolder, analyzeProjectFolder } = useProject();
 
   useEffect(() => {
     setRecentProjects(getRecentProjects());
@@ -135,19 +132,6 @@ export function ProjectSelector() {
     }
   };
 
-  const handleCloneRepo = async () => {
-    if (!gitUrl || !targetPath) {
-      alert("Please provide both Git URL and target path");
-      return;
-    }
-    try {
-      await cloneRepository(gitUrl, targetPath);
-      alert("Repository cloned successfully!");
-    } catch (err) {
-      alert(`Failed to clone: ${err}`);
-    }
-  };
-
   const handleSelectRecentProject = async (recent: RecentProject) => {
     try {
       await analyzeProjectFolder(recent.path);
@@ -167,7 +151,7 @@ export function ProjectSelector() {
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Select Your Project</h2>
         <p className="text-muted-foreground mt-2">
-          Choose a local folder or clone from Git
+          Choose a local folder to configure
         </p>
       </div>
 
@@ -217,140 +201,84 @@ export function ProjectSelector() {
         </Card>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Local Folder */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <FolderOpen className="h-5 w-5" />
-              <span>Local Folder</span>
-            </CardTitle>
-            <CardDescription>
-              Select an existing project on your computer
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {projectPath && (
-                <div className="space-y-3">
-                  <div className="p-3 bg-muted rounded-md text-sm break-all">
-                    <div className="font-medium mb-1">Path:</div>
-                    {projectPath}
-                  </div>
-                  {analysis && (
-                    <div className="p-3 bg-muted rounded-md text-sm space-y-2">
-                      {analysis.frameworks && analysis.frameworks.length > 0 && (
-                        <div>
-                          <span className="font-medium">Frameworks:</span>{" "}
-                          {analysis.frameworks.join(", ")}
-                        </div>
-                      )}
-                      {analysis.languages && Object.keys(analysis.languages).length > 0 && (
-                        <div>
-                          <span className="font-medium">Languages:</span>{" "}
-                          {Object.entries(analysis.languages)
-                            .sort(([, a], [, b]) => b - a)
-                            .map(([lang, percent]) => `${lang} (${percent}%)`)
-                            .join(", ")}
-                        </div>
-                      )}
-                      {analysis.files && (
-                        <div>
-                          <span className="font-medium">Files:</span> {analysis.files.total}
-                        </div>
-                      )}
-                    </div>
-                  )}
+      {/* Local Folder */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <FolderOpen className="h-5 w-5" />
+            <span>Local Folder</span>
+          </CardTitle>
+          <CardDescription>
+            Select an existing project on your computer
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {projectPath && (
+              <div className="space-y-3">
+                <div className="p-3 bg-muted rounded-md text-sm break-all">
+                  <div className="font-medium mb-1">Path:</div>
+                  {projectPath}
                 </div>
-              )}
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleSelectFolder}
-                  disabled={isAnalyzing}
-                  className="flex-1"
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    <>
-                      <FolderOpen className="mr-2 h-4 w-4" />
-                      Browse Folder
-                    </>
-                  )}
-                </Button>
-                {projectPath && (
-                  <Button
-                    onClick={handleOpenFolder}
-                    disabled={isAnalyzing}
-                    variant="outline"
-                    className="shrink-0"
-                  >
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Open Folder
-                  </Button>
+                {analysis && (
+                  <div className="p-3 bg-muted rounded-md text-sm space-y-2">
+                    {analysis.frameworks && analysis.frameworks.length > 0 && (
+                      <div>
+                        <span className="font-medium">Frameworks:</span>{" "}
+                        {analysis.frameworks.join(", ")}
+                      </div>
+                    )}
+                    {analysis.languages && Object.keys(analysis.languages).length > 0 && (
+                      <div>
+                        <span className="font-medium">Languages:</span>{" "}
+                        {Object.entries(analysis.languages)
+                          .sort(([, a], [, b]) => b - a)
+                          .map(([lang, percent]) => `${lang} (${percent}%)`)
+                          .join(", ")}
+                      </div>
+                    )}
+                    {analysis.files && (
+                      <div>
+                        <span className="font-medium">Files:</span> {analysis.files.total}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Git Clone */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <GitBranch className="h-5 w-5" />
-              <span>Clone from Git</span>
-            </CardTitle>
-            <CardDescription>
-              Clone a repository from a Git URL
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Repository URL</label>
-                <Input
-                  type="url"
-                  placeholder="https://github.com/user/repo.git"
-                  value={gitUrl}
-                  onChange={(e) => setGitUrl(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Target Path</label>
-                <Input
-                  type="text"
-                  placeholder="C:\Projects\my-repo"
-                  value={targetPath}
-                  onChange={(e) => setTargetPath(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
+            )}
+            <div className="flex gap-2">
               <Button
-                onClick={handleCloneRepo}
-                disabled={isAnalyzing || !gitUrl || !targetPath}
-                className="w-full"
+                onClick={handleSelectFolder}
+                disabled={isAnalyzing}
+                className="flex-1"
               >
                 {isAnalyzing ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Cloning...
+                    Analyzing...
                   </>
                 ) : (
                   <>
-                    <GitBranch className="mr-2 h-4 w-4" />
-                    Clone Repository
+                    <FolderOpen className="mr-2 h-4 w-4" />
+                    Browse Folder
                   </>
                 )}
               </Button>
+              {projectPath && (
+                <Button
+                  onClick={handleOpenFolder}
+                  disabled={isAnalyzing}
+                  variant="outline"
+                  className="shrink-0"
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Open Folder
+                </Button>
+              )}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Claude Configuration Info */}
       <div className="grid gap-6 md:grid-cols-2">

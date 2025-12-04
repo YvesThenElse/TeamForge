@@ -236,8 +236,8 @@ export function registerSkillHandlers(ipcMain) {
             return [];
           }
         }
-        // Apply sourcePath if provided
-        templatesDir = sourcePath ? path.join(repoPath, sourcePath) : repoPath;
+        // Note: sourcePath is only used during sync - cache already has extracted files
+        templatesDir = repoPath;
         console.log('[skill:loadTemplates] Loading from cache:', templatesDir);
       }
 

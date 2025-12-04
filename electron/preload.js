@@ -7,12 +7,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
   openFolder: (folderPath) => ipcRenderer.invoke('folder:open', { folderPath }),
 
-  // Git commands
-  cloneRepo: (url, path) => ipcRenderer.invoke('git:clone', { url, path }),
+  // Git commands (read-only)
   isGitRepo: (path) => ipcRenderer.invoke('git:isRepo', { path }),
   getRepoStatus: (path) => ipcRenderer.invoke('git:status', { path }),
-  createGitCommit: (path, message, files) =>
-    ipcRenderer.invoke('git:commit', { path, message, files }),
 
   // Project commands
   analyzeProject: (path) => ipcRenderer.invoke('project:analyze', { path }),

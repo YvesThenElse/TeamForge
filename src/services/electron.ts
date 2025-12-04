@@ -76,15 +76,9 @@ declare global {
       selectFolder: () => Promise<string | null>;
       openFolder: (folderPath: string) => Promise<string>;
 
-      // Git commands
-      cloneRepo: (url: string, path: string) => Promise<string>;
+      // Git commands (read-only)
       isGitRepo: (path: string) => Promise<boolean>;
       getRepoStatus: (path: string) => Promise<string[]>;
-      createGitCommit: (
-        path: string,
-        message: string,
-        files: string[]
-      ) => Promise<string>;
 
       // Project commands
       analyzeProject: (path: string) => Promise<ProjectAnalysis>;
@@ -364,12 +358,8 @@ export async function openFolder(folderPath: string): Promise<string> {
 }
 
 // ============================================================================
-// Git Commands
+// Git Commands (read-only)
 // ============================================================================
-
-export async function cloneRepo(url: string, path: string): Promise<string> {
-  return window.electronAPI.cloneRepo(url, path);
-}
 
 export async function isGitRepo(path: string): Promise<boolean> {
   return window.electronAPI.isGitRepo(path);
@@ -377,14 +367,6 @@ export async function isGitRepo(path: string): Promise<boolean> {
 
 export async function getRepoStatus(path: string): Promise<string[]> {
   return window.electronAPI.getRepoStatus(path);
-}
-
-export async function createGitCommit(
-  path: string,
-  message: string,
-  files: string[]
-): Promise<string> {
-  return window.electronAPI.createGitCommit(path, message, files);
 }
 
 // ============================================================================
