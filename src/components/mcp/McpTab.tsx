@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/Badge";
 import { useProjectStore } from "@/stores/projectStore";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useMcpStore } from "@/stores/mcpStore";
 import type { McpServer } from "@/types/mcp";
 import * as electron from "@/services/electron";
 import { McpDetailModal } from "./McpDetailModal";
@@ -14,14 +15,25 @@ import { CreateMcpModal } from "./CreateMcpModal";
 export function McpTab() {
   const { projectPath } = useProjectStore();
   const { developerMode, setDeveloperMode, mcpCachePath, mcpSourcePath, mcpDevPath } = useSettingsStore();
-  const [library, setLibrary] = useState<McpServer[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
+  // Use MCP store for library state
+  const {
+    library,
+    categories,
+    selectedCategory,
+    searchQuery,
+    isLoading: loading,
+    setLibrary,
+    setSelectedCategory,
+    setSearchQuery,
+    setIsLoading: setLoading,
+    getFilteredMcps,
+  } = useMcpStore();
+
+  // Local state for UI-specific concerns
   const [selectedMcp, setSelectedMcp] = useState<McpServer | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState<string>("");
   const [deployedMcps, setDeployedMcps] = useState<McpServer[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -78,19 +90,13 @@ export function McpTab() {
         mcpSourcePath || undefined
       );
       console.log("[McpTab] Loaded templates:", templates);
+      // setLibrary automatically extracts categories
       setLibrary(templates);
-
-      // Extract unique categories
-      const uniqueCategories = Array.from(
-        new Set(templates.map((m) => m.category).filter(Boolean))
-      ).sort() as string[];
-      setCategories(uniqueCategories);
     } catch (err: any) {
       console.error("[McpTab] Failed to load templates:", err);
       setLoadError(err.message || "Failed to load MCP library");
       // Clear library when there's an error (especially important for dev mode)
       setLibrary([]);
-      setCategories([]);
     } finally {
       setLoading(false);
     }
@@ -145,21 +151,8 @@ export function McpTab() {
     setDeveloperMode(!developerMode);
   };
 
-  // Filter by category first
-  let filteredMcps = selectedCategory === "all"
-    ? library
-    : library.filter((m) => m.category === selectedCategory);
-
-  // Then filter by search query (only if 3+ characters)
-  if (searchQuery.trim().length >= 3) {
-    const query = searchQuery.toLowerCase();
-    filteredMcps = filteredMcps.filter((mcp) =>
-      mcp.name.toLowerCase().includes(query) ||
-      mcp.description.toLowerCase().includes(query) ||
-      mcp.tags?.some((tag) => tag.toLowerCase().includes(query)) ||
-      (mcp.category && mcp.category.toLowerCase().includes(query))
-    );
-  }
+  // Get filtered MCPs from store
+  const filteredMcps = getFilteredMcps();
 
   const handleClearSearch = () => {
     setSearchQuery("");

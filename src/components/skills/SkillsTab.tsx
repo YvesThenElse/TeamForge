@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/Badge";
 import { useProjectStore } from "@/stores/projectStore";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useSkillStore } from "@/stores/skillStore";
 import type { Skill } from "@/types/skill";
 import * as electron from "@/services/electron";
 import { SkillDetailModal } from "./SkillDetailModal";
@@ -14,14 +15,25 @@ import { CreateSkillModal } from "./CreateSkillModal";
 export function SkillsTab() {
   const { projectPath } = useProjectStore();
   const { developerMode, setDeveloperMode, skillCachePath, skillSourcePath, skillDevPath } = useSettingsStore();
-  const [library, setLibrary] = useState<Skill[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
+  // Use skill store for library state
+  const {
+    library,
+    categories,
+    selectedCategory,
+    searchQuery,
+    isLoading: loading,
+    setLibrary,
+    setSelectedCategory,
+    setSearchQuery,
+    setIsLoading: setLoading,
+    getFilteredSkills,
+  } = useSkillStore();
+
+  // Local state for UI-specific concerns
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState<string>("");
   const [deployedSkills, setDeployedSkills] = useState<Skill[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -78,19 +90,13 @@ export function SkillsTab() {
         skillSourcePath || undefined
       );
       console.log("[SkillsTab] Loaded templates:", templates);
+      // setLibrary automatically extracts categories
       setLibrary(templates);
-
-      // Extract unique categories
-      const uniqueCategories = Array.from(
-        new Set(templates.map((s) => s.category).filter(Boolean))
-      ).sort() as string[];
-      setCategories(uniqueCategories);
     } catch (err: any) {
       console.error("[SkillsTab] Failed to load templates:", err);
       setLoadError(err.message || "Failed to load skill library");
       // Clear library when there's an error (especially important for dev mode)
       setLibrary([]);
-      setCategories([]);
     } finally {
       setLoading(false);
     }
@@ -145,21 +151,8 @@ export function SkillsTab() {
     setDeveloperMode(!developerMode);
   };
 
-  // Filter by category first
-  let filteredSkills = selectedCategory === "all"
-    ? library
-    : library.filter((s) => s.category === selectedCategory);
-
-  // Then filter by search query (only if 3+ characters)
-  if (searchQuery.trim().length >= 3) {
-    const query = searchQuery.toLowerCase();
-    filteredSkills = filteredSkills.filter((skill) =>
-      skill.name.toLowerCase().includes(query) ||
-      skill.description.toLowerCase().includes(query) ||
-      skill.tags?.some((tag) => tag.toLowerCase().includes(query)) ||
-      (skill.category && skill.category.toLowerCase().includes(query))
-    );
-  }
+  // Get filtered skills from store
+  const filteredSkills = getFilteredSkills();
 
   const handleClearSearch = () => {
     setSearchQuery("");

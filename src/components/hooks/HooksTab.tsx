@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/Badge";
 import { useProjectStore } from "@/stores/projectStore";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useHookStore } from "@/stores/hookStore";
 import type { Hook, HookEvent } from "@/types/hook";
 import * as electron from "@/services/electron";
 import { HookDetailModal } from "./HookDetailModal";
@@ -30,14 +31,25 @@ function getEventBadgeClass(event: HookEvent): string {
 export function HooksTab() {
   const { projectPath } = useProjectStore();
   const { claudeSettingsFile, developerMode, setDeveloperMode, hookCachePath, hookSourcePath, hookDevPath } = useSettingsStore();
-  const [library, setLibrary] = useState<Hook[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
+  // Use hook store for library state
+  const {
+    library,
+    categories,
+    selectedCategory,
+    searchQuery,
+    isLoading: loading,
+    setLibrary,
+    setSelectedCategory,
+    setSearchQuery,
+    setIsLoading: setLoading,
+    getFilteredHooks,
+  } = useHookStore();
+
+  // Local state for UI-specific concerns
   const [selectedHook, setSelectedHook] = useState<Hook | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState<string>("");
   const [deployedHooks, setDeployedHooks] = useState<Array<{
     event: string;
     matcher: string;
@@ -99,19 +111,13 @@ export function HooksTab() {
         hookSourcePath || undefined
       );
       console.log("[HooksTab] Loaded templates:", templates);
+      // setLibrary automatically extracts categories
       setLibrary(templates);
-
-      // Extract unique categories
-      const uniqueCategories = Array.from(
-        new Set(templates.map((h) => h.category).filter(Boolean))
-      ).sort() as string[];
-      setCategories(uniqueCategories);
     } catch (err: any) {
       console.error("[HooksTab] Failed to load templates:", err);
       setLoadError(err.message || "Failed to load hook library");
       // Clear library when there's an error (especially important for dev mode)
       setLibrary([]);
-      setCategories([]);
     } finally {
       setLoading(false);
     }
@@ -166,22 +172,8 @@ export function HooksTab() {
     setDeveloperMode(!developerMode);
   };
 
-  // Filter by category first
-  let filteredHooks = selectedCategory === "all"
-    ? library
-    : library.filter((h) => h.category === selectedCategory);
-
-  // Then filter by search query (only if 3+ characters)
-  if (searchQuery.trim().length >= 3) {
-    const query = searchQuery.toLowerCase();
-    filteredHooks = filteredHooks.filter((hook) =>
-      hook.name.toLowerCase().includes(query) ||
-      hook.description.toLowerCase().includes(query) ||
-      hook.tags?.some((tag) => tag.toLowerCase().includes(query)) ||
-      (hook.category && hook.category.toLowerCase().includes(query)) ||
-      hook.event.toLowerCase().includes(query)
-    );
-  }
+  // Get filtered hooks from store
+  const filteredHooks = getFilteredHooks();
 
   const handleClearSearch = () => {
     setSearchQuery("");
