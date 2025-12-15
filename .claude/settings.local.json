@@ -21,7 +21,8 @@
       "Bash(do mv \"$dir/instructions.md\" \"$dir/SKILL.md\")",
       "WebSearch",
       "WebFetch(domain:reactflow.dev)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

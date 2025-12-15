@@ -30,6 +30,9 @@ src-tauri/Cargo.lock
 # TeamForge data
 .teamforge/
 
+# Binaries
+build/
+
 # Swark
 swark-output/
 

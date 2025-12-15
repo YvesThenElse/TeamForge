@@ -76,7 +76,10 @@ TeamForge/
 | Command | Description |
 |---------|-------------|
 | `npm start` | Start Electron app in development |
-| `npm run electron:build` | Build production app |
+| `npm run electron:build` | Build production app (current platform) |
+| `npm run build:win` | Build Windows installer (NSIS) |
+| `npm run build:mac` | Build macOS app (DMG) |
+| `npm run build:linux` | Build Linux app (AppImage) |
 | `npm run clean` | Remove build artifacts |
 | `npm run check:frontend` | TypeScript type check |
 

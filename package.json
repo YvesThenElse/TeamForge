@@ -12,6 +12,9 @@
     "preview": "vite preview",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:1420 && electron .\"",
     "electron:build": "npm run build && electron-builder",
+    "build:win": "npm run build && electron-builder --win --config",
+    "build:mac": "npm run build && electron-builder --mac --config",
+    "build:linux": "npm run build && electron-builder --linux --config",
     "clean": "node -e \"const fs=require('fs');['node_modules','dist','build'].forEach(d=>{try{fs.rmSync(d,{recursive:true,force:true})}catch(e){}})\"",
     "clean:install": "npm run clean && npm install",
     "check:frontend": "tsc --noEmit"
