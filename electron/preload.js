@@ -193,6 +193,34 @@ contextBridge.exposeInMainWorld('electronAPI', {
   teamforgeSettingsExists: (projectPath) =>
     ipcRenderer.invoke('teamforgeSettings:exists', { projectPath }),
 
+  // Constitution commands
+  getConstitutionLibrary: (devMode, cachePath, devPath, projectPath, sourcePath) =>
+    ipcRenderer.invoke('constitution:getLibrary', { devMode, cachePath, devPath, projectPath, sourcePath }),
+  reloadConstitutions: (devMode, cachePath, devPath, projectPath, sourcePath) =>
+    ipcRenderer.invoke('constitution:reload', { devMode, cachePath, devPath, projectPath, sourcePath }),
+  getConstitutionById: (id, devMode, cachePath, devPath, projectPath, sourcePath) =>
+    ipcRenderer.invoke('constitution:getById', { id, devMode, cachePath, devPath, projectPath, sourcePath }),
+  createConstitutionTemplate: (name, description, content, category, tags, targetSystem, devPath, projectPath) =>
+    ipcRenderer.invoke('constitution:createTemplate', { name, description, content, category, tags, targetSystem, devPath, projectPath }),
+  updateConstitutionTemplate: (id, name, description, content, category, tags, targetSystem, devPath, projectPath) =>
+    ipcRenderer.invoke('constitution:updateTemplate', { id, name, description, content, category, tags, targetSystem, devPath, projectPath }),
+  deleteConstitutionTemplate: (id, devPath, projectPath) =>
+    ipcRenderer.invoke('constitution:deleteTemplate', { id, devPath, projectPath }),
+
+  // Deployment commands
+  getDeploymentSystems: () =>
+    ipcRenderer.invoke('deployment:getSystems'),
+  getDeploymentCapabilities: (system, projectPath) =>
+    ipcRenderer.invoke('deployment:getCapabilities', { system, projectPath }),
+  getAllDeploymentCapabilities: (projectPath) =>
+    ipcRenderer.invoke('deployment:getAllCapabilities', { projectPath }),
+  validateDeployment: (team, targetSystems, projectPath) =>
+    ipcRenderer.invoke('deployment:validate', { team, targetSystems, projectPath }),
+  deploy: (team, targetSystem, projectPath, options) =>
+    ipcRenderer.invoke('deployment:deploy', { team, targetSystem, projectPath, options }),
+  deployMultiple: (team, targetSystems, projectPath, options) =>
+    ipcRenderer.invoke('deployment:deployMultiple', { team, targetSystems, projectPath, options }),
+
   // Claude Settings commands
   loadClaudeSettings: (projectPath, settingsFileName) =>
     ipcRenderer.invoke('claudeSettings:load', { projectPath, settingsFileName }),

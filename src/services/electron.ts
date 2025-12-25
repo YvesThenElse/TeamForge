@@ -14,6 +14,7 @@ import type { Team } from "@/types/team";
 import type { Hook } from "@/types/hook";
 import type { ClaudeSettings, SettingsFile } from "@/types/claudeSettings";
 import type { McpServer } from "@/types/mcp";
+import type { Constitution, ConstitutionCategory, AISystem } from "@/types/constitution";
 
 // TeamForge project-level settings type
 export interface TeamforgeSettings {
@@ -49,6 +50,14 @@ export interface TeamforgeSettings {
   mcpCachePath: string;
   mcpLastSync: string | null;
 
+  // Constitution Source Settings
+  constitutionRepoUrl: string;
+  constitutionRepoBranch: string;
+  constitutionSourcePath: string;
+  constitutionDevPath: string;
+  constitutionCachePath: string;
+  constitutionLastSync: string | null;
+
   // Application Preferences
   autoSync: boolean;
   theme: "light" | "dark" | "system";
@@ -66,6 +75,79 @@ export interface TeamforgeSettings {
     blockedCommands?: string[];
     requireConfirmation?: boolean;
   };
+}
+
+// Deployment types
+export interface SystemCapabilities {
+  agents: boolean;
+  constitution: boolean;
+  skills: boolean;
+  hooks: boolean;
+  mcpServers: boolean;
+  memory: boolean;
+}
+
+export interface DeploymentTeam {
+  id?: string;
+  name?: string;
+  constitution?: string;
+  // Can be either full Agent objects or TeamAgent references
+  agents?: Array<Agent | { agentId: string; order?: number; customInstructions?: string }>;
+  // Can be either full Skill objects or TeamSkill references
+  skills?: Array<Skill | { skillId: string; order?: number }>;
+  // Can be either full Hook objects or TeamHook references
+  hooks?: Array<Hook | { hookId: string; order?: number }>;
+  // Can be either full McpServer objects or TeamMcp references
+  mcpServers?: Array<McpServer | { mcpId: string; order?: number }>;
+  settings?: Record<string, unknown>;
+  security?: {
+    configured?: boolean;
+    permissions?: {
+      allow?: string[];
+      deny?: string[];
+      ask?: string[];
+    };
+    env?: Record<string, string>;
+  };
+  memoryBank?: {
+    projectBrief?: string;
+    techContext?: string;
+    activeContext?: string;
+  };
+}
+
+export interface DeploymentOptions {
+  clearExisting?: boolean;
+  useLocal?: boolean;
+  deployGlobal?: boolean;
+  useRulesFolder?: boolean;
+  rulesFileName?: string;
+  deployMemoryBank?: boolean;
+}
+
+export interface DeploymentValidation {
+  valid: boolean;
+  warnings: Array<{
+    system: AISystem;
+    feature: string;
+    message: string;
+  }>;
+  errors: string[];
+}
+
+export interface DeploymentResult {
+  system: AISystem;
+  success: boolean;
+  error?: string;
+  details: Record<string, unknown>;
+  warnings?: string[];
+}
+
+export interface MultiDeploymentResult {
+  results: Record<AISystem, DeploymentResult>;
+  validation: DeploymentValidation;
+  errors: Array<{ system: AISystem; error: string }>;
+  success: boolean;
 }
 
 // Access the Electron API exposed via preload script
@@ -269,6 +351,22 @@ declare global {
       ) => Promise<string>;
       hookDirExists: (projectPath: string) => Promise<boolean>;
       ensureHooksDir: (projectPath: string) => Promise<string>;
+
+      // Constitution commands
+      getConstitutionLibrary: (devMode?: boolean, cachePath?: string, devPath?: string, projectPath?: string, sourcePath?: string) => Promise<ConstitutionLibraryResponse>;
+      reloadConstitutions: (devMode?: boolean, cachePath?: string, devPath?: string, projectPath?: string, sourcePath?: string) => Promise<ConstitutionLibraryResponse>;
+      getConstitutionById: (id: string, devMode?: boolean, cachePath?: string, devPath?: string, projectPath?: string, sourcePath?: string) => Promise<Constitution | null>;
+      createConstitutionTemplate: (name: string, description: string, content: string, category: ConstitutionCategory, tags: string[], targetSystem: AISystem | undefined, devPath: string, projectPath?: string) => Promise<{ success: boolean; filePath: string }>;
+      updateConstitutionTemplate: (id: string, name: string, description: string, content: string, category: ConstitutionCategory, tags: string[], targetSystem: AISystem | undefined, devPath: string, projectPath?: string) => Promise<{ success: boolean; filePath: string }>;
+      deleteConstitutionTemplate: (id: string, devPath: string, projectPath?: string) => Promise<{ success: boolean }>;
+
+      // Deployment commands
+      getDeploymentSystems: () => Promise<AISystem[]>;
+      getDeploymentCapabilities: (system: AISystem, projectPath: string) => Promise<SystemCapabilities>;
+      getAllDeploymentCapabilities: (projectPath: string) => Promise<Record<AISystem, SystemCapabilities>>;
+      validateDeployment: (team: DeploymentTeam, targetSystems: AISystem[], projectPath: string) => Promise<DeploymentValidation>;
+      deploy: (team: DeploymentTeam, targetSystem: AISystem, projectPath: string, options?: DeploymentOptions) => Promise<DeploymentResult>;
+      deployMultiple: (team: DeploymentTeam, targetSystems: AISystem[], projectPath: string, options?: DeploymentOptions) => Promise<MultiDeploymentResult>;
 
       // MCP Server commands
       listMcpServers: (projectPath: string) => Promise<McpServer[]>;
@@ -1005,4 +1103,129 @@ export async function validateClaudeSettings(settings: ClaudeSettings): Promise<
   errors: string[];
 }> {
   return window.electronAPI.validateClaudeSettings(settings);
+}
+
+// ============================================================================
+// Constitution Commands
+// ============================================================================
+
+export interface ConstitutionLibraryResponse {
+  version: string;
+  constitutions: Constitution[];
+  categories: ConstitutionCategory[];
+  source?: string;
+  loadedFrom?: string;
+}
+
+export async function getConstitutionLibrary(
+  devMode?: boolean,
+  cachePath?: string,
+  devPath?: string,
+  projectPath?: string,
+  sourcePath?: string
+): Promise<ConstitutionLibraryResponse> {
+  return window.electronAPI.getConstitutionLibrary(devMode, cachePath, devPath, projectPath, sourcePath);
+}
+
+export async function reloadConstitutions(
+  devMode?: boolean,
+  cachePath?: string,
+  devPath?: string,
+  projectPath?: string,
+  sourcePath?: string
+): Promise<ConstitutionLibraryResponse> {
+  return window.electronAPI.reloadConstitutions(devMode, cachePath, devPath, projectPath, sourcePath);
+}
+
+export async function getConstitutionById(
+  id: string,
+  devMode?: boolean,
+  cachePath?: string,
+  devPath?: string,
+  projectPath?: string,
+  sourcePath?: string
+): Promise<Constitution | null> {
+  return window.electronAPI.getConstitutionById(id, devMode, cachePath, devPath, projectPath, sourcePath);
+}
+
+export async function createConstitutionTemplate(
+  name: string,
+  description: string,
+  content: string,
+  category: ConstitutionCategory,
+  tags: string[],
+  targetSystem: AISystem | undefined,
+  devPath: string,
+  projectPath?: string
+): Promise<{ success: boolean; filePath: string }> {
+  return window.electronAPI.createConstitutionTemplate(name, description, content, category, tags, targetSystem, devPath, projectPath);
+}
+
+export async function updateConstitutionTemplate(
+  id: string,
+  name: string,
+  description: string,
+  content: string,
+  category: ConstitutionCategory,
+  tags: string[],
+  targetSystem: AISystem | undefined,
+  devPath: string,
+  projectPath?: string
+): Promise<{ success: boolean; filePath: string }> {
+  return window.electronAPI.updateConstitutionTemplate(id, name, description, content, category, tags, targetSystem, devPath, projectPath);
+}
+
+export async function deleteConstitutionTemplate(
+  id: string,
+  devPath: string,
+  projectPath?: string
+): Promise<{ success: boolean }> {
+  return window.electronAPI.deleteConstitutionTemplate(id, devPath, projectPath);
+}
+
+// ============================================================================
+// Deployment
+// ============================================================================
+
+export async function getDeploymentSystems(): Promise<AISystem[]> {
+  return window.electronAPI.getDeploymentSystems();
+}
+
+export async function getDeploymentCapabilities(
+  system: AISystem,
+  projectPath: string
+): Promise<SystemCapabilities> {
+  return window.electronAPI.getDeploymentCapabilities(system, projectPath);
+}
+
+export async function getAllDeploymentCapabilities(
+  projectPath: string
+): Promise<Record<AISystem, SystemCapabilities>> {
+  return window.electronAPI.getAllDeploymentCapabilities(projectPath);
+}
+
+export async function validateDeployment(
+  team: DeploymentTeam,
+  targetSystems: AISystem[],
+  projectPath: string
+): Promise<DeploymentValidation> {
+  return window.electronAPI.validateDeployment(team, targetSystems, projectPath);
+}
+
+export async function deploy(
+  team: DeploymentTeam,
+  targetSystem: AISystem,
+  projectPath: string,
+  options?: DeploymentOptions
+): Promise<DeploymentResult> {
+  return window.electronAPI.deploy(team, targetSystem, projectPath, options);
+}
+
+export async function deployMultiple(
+  team: DeploymentTeam,
+  targetSystems: AISystem[],
+  projectPath: string,
+  options?: DeploymentOptions
+): Promise<MultiDeploymentResult> {
+  return window.electronAPI.deployMultiple(team, targetSystems, projectPath, options);
 }

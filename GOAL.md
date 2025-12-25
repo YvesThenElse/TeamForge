@@ -215,7 +215,83 @@ Ces écarts signifient que TeamForge devra :
 
 ---
 
-## 4. Architecture Proposée
+## 4. Architecture Implémentée
+
+### 4.0 Système de Déploiement Multi-Cibles (IMPLÉMENTÉ)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    TEAMFORGE DEPLOYMENT                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Team Configuration                                             │
+│  ├── Constitution (CLAUDE.md content)                           │
+│  ├── Agents[]                                                   │
+│  ├── Skills[]                                                   │
+│  ├── Hooks[]                                                    │
+│  └── MCP Servers[]                                              │
+│           │                                                     │
+│           ▼                                                     │
+│  ┌─────────────────┐                                            │
+│  │ DeployDialog    │ ← Select target system(s)                  │
+│  │ ☑ Claude Code   │                                            │
+│  │ ☑ Gemini CLI    │                                            │
+│  │ ☐ Cline         │                                            │
+│  └─────────────────┘                                            │
+│           │                                                     │
+│           ▼                                                     │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │              DeploymentService                          │    │
+│  │  ┌─────────────┬──────────────┬─────────────┐          │    │
+│  │  │ ClaudeCode  │  GeminiCli   │   Cline     │          │    │
+│  │  │  Provider   │   Provider   │  Provider   │          │    │
+│  │  └─────────────┴──────────────┴─────────────┘          │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│           │                   │                   │              │
+│           ▼                   ▼                   ▼              │
+│      .claude/            GEMINI.md          .clinerules/        │
+│      ├─agents/           ~/.gemini/         memory-bank/        │
+│      ├─commands/         └─settings.json                        │
+│      ├─settings.json                                            │
+│      └─CLAUDE.md                                                │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Structure des Fichiers Implémentés
+
+```
+electron/handlers/deployment/
+├── index.js                    # Point d'entrée, exports
+├── DeploymentService.js        # Orchestrateur de déploiement
+└── providers/
+    ├── BaseProvider.js         # Interface abstraite
+    ├── ClaudeCodeProvider.js   # Déploiement vers .claude/
+    ├── GeminiCliProvider.js    # Déploiement vers ~/.gemini/
+    └── ClineProvider.js        # Déploiement vers .clinerules/
+
+src/components/teams/
+└── DeployDialog.tsx            # UI de sélection multi-cibles
+
+src/components/constitution/
+├── ConstitutionTab.tsx         # Tab principal
+├── ConstitutionDetailModal.tsx # Détail/édition
+└── CreateConstitutionModal.tsx # Création (mode dev)
+
+src/stores/
+└── constitutionStore.ts        # Store Zustand
+
+src/types/
+└── constitution.ts             # Types TypeScript
+```
+
+#### Capacités par Provider
+
+| Provider | Agents | Skills | Hooks | MCP | Constitution | Memory |
+|----------|--------|--------|-------|-----|--------------|--------|
+| ClaudeCode | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| GeminiCli | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Cline | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
 
 ### 4.1 Modèle de Données Unifié
 

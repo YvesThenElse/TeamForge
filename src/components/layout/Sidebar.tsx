@@ -1,9 +1,9 @@
-import { FolderOpen, Users, Sparkles, Sliders, HelpCircle, Zap, Server, Settings2, Wrench } from "lucide-react";
+import { FolderOpen, Users, Sparkles, Sliders, HelpCircle, Zap, Server, Settings2, Wrench, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
-  currentStep: "project" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "mcp" | "claude-settings" | "settings" | "help";
-  onStepChange: (step: "project" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "mcp" | "claude-settings" | "settings" | "help") => void;
+  currentStep: "project" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "mcp" | "constitution" | "claude-settings" | "settings" | "help";
+  onStepChange: (step: "project" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "mcp" | "constitution" | "claude-settings" | "settings" | "help") => void;
   hasProjectSelected?: boolean;
 }
 
@@ -45,6 +45,12 @@ export function Sidebar({ currentStep, onStepChange, hasProjectSelected = false 
       label: "MCP",
       icon: Server,
       description: "MCP servers",
+    },
+    {
+      id: "constitution" as const,
+      label: "Constitution",
+      icon: ScrollText,
+      description: "System instructions",
     },
     {
       id: "claude-settings" as const,

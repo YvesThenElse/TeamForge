@@ -13,7 +13,7 @@ import { CreateAgentModal } from "./CreateAgentModal";
 import type { Agent } from "@/types";
 import type { AgentFile } from "@/types/agentFile";
 
-export function ConfigureAgentTab() {
+export function AgentTab() {
   const { library, categories, setLibrary, setCategories, isLoading, setIsLoading } = useAgentStore();
   const { projectPath } = useProjectStore();
   const { developerMode, setDeveloperMode, agentCachePath, agentDevPath, agentSourcePath } = useSettingsStore();
@@ -70,19 +70,19 @@ export function ConfigureAgentTab() {
     setIsLoading(true);
     setLoadError(null);
     try {
-      console.log(`[ConfigureAgentTab] Loading agent library ${devMode ? '(dev mode)' : ''}... cachePath:`, agentCachePath, 'sourcePath:', agentSourcePath, 'projectPath:', projectPath);
+      console.log(`[AgentTab] Loading agent library ${devMode ? '(dev mode)' : ''}... cachePath:`, agentCachePath, 'sourcePath:', agentSourcePath, 'projectPath:', projectPath);
       const libraryData = await electron.getAgentLibrary(devMode, agentCachePath, agentDevPath, projectPath || undefined, agentSourcePath);
-      console.log("[ConfigureAgentTab] Loaded library:", libraryData);
+      console.log("[AgentTab] Loaded library:", libraryData);
       setLibrary(libraryData.agents);
 
       // Extract unique categories from agents
       const uniqueCategories = Array.from(
         new Set(libraryData.agents.map((a) => a.category).filter(Boolean))
       ).sort();
-      console.log("[ConfigureAgentTab] Categories:", uniqueCategories);
+      console.log("[AgentTab] Categories:", uniqueCategories);
       setCategories(uniqueCategories as any);
     } catch (err: any) {
-      console.error("[ConfigureAgentTab] Failed to load agent library:", err);
+      console.error("[AgentTab] Failed to load agent library:", err);
       setLoadError(err.message || "Failed to load agent library");
       // Clear library when there's an error (especially important for dev mode)
       setLibrary([]);
@@ -115,7 +115,7 @@ export function ConfigureAgentTab() {
       const deployed = await electron.listAgentFiles(projectPath);
       setDeployedAgents(deployed);
     } catch (err) {
-      console.error("[ConfigureAgentTab] Failed to load deployed agents:", err);
+      console.error("[AgentTab] Failed to load deployed agents:", err);
       setDeployedAgents([]);
     }
   };
@@ -127,7 +127,7 @@ export function ConfigureAgentTab() {
       await electron.reloadAgents(developerMode, agentCachePath, agentDevPath, projectPath || undefined, agentSourcePath);
       await loadAgentLibrary(developerMode);
     } catch (err) {
-      console.error("[ConfigureAgentTab] Failed to refresh agents:", err);
+      console.error("[AgentTab] Failed to refresh agents:", err);
       alert(`Failed to refresh agents: ${err}`);
     } finally {
       setIsRefreshing(false);

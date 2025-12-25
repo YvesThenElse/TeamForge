@@ -6,7 +6,7 @@ import type { Team } from "@/types/team";
 
 type ViewMode = "list" | "editor";
 
-export function ConfigureTeamTab() {
+export function TeamTab() {
   const { createTeam, setCurrentTeam } = useTeamStore();
   const [viewMode, setViewMode] = useState<ViewMode>("list");
 

@@ -20,6 +20,8 @@ import { registerHookHandlers } from './handlers/hookHandlers.js';
 import { registerClaudeSettingsHandlers } from './handlers/claudeSettingsHandlers.js';
 import { registerTeamforgeSettingsHandlers } from './handlers/teamforgeSettingsHandlers.js';
 import { registerMcpHandlers } from './handlers/mcpHandlers.js';
+import { registerConstitutionHandlers } from './handlers/constitutionHandlers.js';
+import { registerDeploymentHandlers } from './handlers/deploymentHandlers.js';
 
 let mainWindow;
 
@@ -66,6 +68,8 @@ app.whenReady().then(() => {
   registerClaudeSettingsHandlers(ipcMain);
   registerTeamforgeSettingsHandlers(ipcMain);
   registerMcpHandlers(ipcMain);
+  registerConstitutionHandlers(ipcMain);
+  registerDeploymentHandlers(ipcMain);
 
   // Basic dialog handler for file/folder selection
   ipcMain.handle('dialog:selectFolder', async () => {

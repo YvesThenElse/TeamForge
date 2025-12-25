@@ -35,6 +35,14 @@ interface SettingsState {
   mcpCachePath: string;
   mcpLastSync: string | null;
 
+  // Constitution Source Settings
+  constitutionRepoUrl: string;
+  constitutionRepoBranch: string;
+  constitutionSourcePath: string;
+  constitutionDevPath: string;
+  constitutionCachePath: string;
+  constitutionLastSync: string | null;
+
   // Application Preferences
   autoSync: boolean;
   theme: "light" | "dark" | "system";
@@ -89,6 +97,14 @@ interface SettingsState {
   setMcpCachePath: (path: string) => void;
   setMcpLastSync: (timestamp: string | null) => void;
 
+  // Actions - Constitution
+  setConstitutionRepoUrl: (url: string) => void;
+  setConstitutionRepoBranch: (branch: string) => void;
+  setConstitutionSourcePath: (path: string) => void;
+  setConstitutionDevPath: (path: string) => void;
+  setConstitutionCachePath: (path: string) => void;
+  setConstitutionLastSync: (timestamp: string | null) => void;
+
   // Actions - Preferences
   setAutoSync: (autoSync: boolean) => void;
   setTheme: (theme: "light" | "dark" | "system") => void;
@@ -141,6 +157,14 @@ const DEFAULT_STATE = {
   mcpDevPath: "",
   mcpCachePath: `${DEFAULT_CACHE_PATH}/mcps`,
   mcpLastSync: null,
+
+  // Constitution source settings
+  constitutionRepoUrl: "",
+  constitutionRepoBranch: DEFAULT_BRANCH,
+  constitutionSourcePath: "",
+  constitutionDevPath: "",
+  constitutionCachePath: `${DEFAULT_CACHE_PATH}/constitutions`,
+  constitutionLastSync: null,
 
   // Application preferences
   autoSync: false,
@@ -200,6 +224,14 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setMcpCachePath: (path) => set({ mcpCachePath: path }),
   setMcpLastSync: (timestamp) => set({ mcpLastSync: timestamp }),
 
+  // Actions - Constitution
+  setConstitutionRepoUrl: (url) => set({ constitutionRepoUrl: url }),
+  setConstitutionRepoBranch: (branch) => set({ constitutionRepoBranch: branch }),
+  setConstitutionSourcePath: (path) => set({ constitutionSourcePath: path }),
+  setConstitutionDevPath: (path) => set({ constitutionDevPath: path }),
+  setConstitutionCachePath: (path) => set({ constitutionCachePath: path }),
+  setConstitutionLastSync: (timestamp) => set({ constitutionLastSync: timestamp }),
+
   // Actions - Preferences
   setAutoSync: (autoSync) => set({ autoSync }),
   setTheme: (theme) => set({ theme }),
@@ -242,6 +274,12 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
           mcpDevPath: result.settings.mcpDevPath ?? DEFAULT_STATE.mcpDevPath,
           mcpCachePath: result.settings.mcpCachePath ?? DEFAULT_STATE.mcpCachePath,
           mcpLastSync: result.settings.mcpLastSync ?? DEFAULT_STATE.mcpLastSync,
+          constitutionRepoUrl: result.settings.constitutionRepoUrl ?? DEFAULT_STATE.constitutionRepoUrl,
+          constitutionRepoBranch: result.settings.constitutionRepoBranch ?? DEFAULT_STATE.constitutionRepoBranch,
+          constitutionSourcePath: result.settings.constitutionSourcePath ?? DEFAULT_STATE.constitutionSourcePath,
+          constitutionDevPath: result.settings.constitutionDevPath ?? DEFAULT_STATE.constitutionDevPath,
+          constitutionCachePath: result.settings.constitutionCachePath ?? DEFAULT_STATE.constitutionCachePath,
+          constitutionLastSync: result.settings.constitutionLastSync ?? DEFAULT_STATE.constitutionLastSync,
           autoSync: result.settings.autoSync ?? DEFAULT_STATE.autoSync,
           theme: result.settings.theme ?? DEFAULT_STATE.theme,
           confirmDeploy: result.settings.confirmDeploy ?? DEFAULT_STATE.confirmDeploy,
@@ -297,6 +335,12 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
         mcpDevPath: state.mcpDevPath,
         mcpCachePath: state.mcpCachePath,
         mcpLastSync: state.mcpLastSync,
+        constitutionRepoUrl: state.constitutionRepoUrl,
+        constitutionRepoBranch: state.constitutionRepoBranch,
+        constitutionSourcePath: state.constitutionSourcePath,
+        constitutionDevPath: state.constitutionDevPath,
+        constitutionCachePath: state.constitutionCachePath,
+        constitutionLastSync: state.constitutionLastSync,
         autoSync: state.autoSync,
         theme: state.theme,
         confirmDeploy: state.confirmDeploy,

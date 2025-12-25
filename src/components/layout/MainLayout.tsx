@@ -2,11 +2,12 @@ import { useState } from "react";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 import { ProjectSelector } from "@/components/project/ProjectSelector";
-import { ConfigureAgentTab } from "@/components/agents/ConfigureAgentTab";
-import { ConfigureTeamTab } from "@/components/agents/ConfigureTeamTab";
+import { AgentTab } from "@/components/agents/AgentTab";
+import { TeamTab } from "@/components/teams/TeamTab";
 import { SkillsTab } from "@/components/skills/SkillsTab";
 import { HooksTab } from "@/components/hooks/HooksTab";
 import { McpTab } from "@/components/mcp/McpTab";
+import { ConstitutionTab } from "@/components/constitution/ConstitutionTab";
 import { ClaudeSettingsTab } from "@/components/claude-settings/ClaudeSettingsTab";
 import { SettingsTab } from "@/components/settings/SettingsTab";
 import { HelpTab } from "@/components/help/HelpTab";
@@ -14,7 +15,7 @@ import { useProjectStore } from "@/stores/projectStore";
 
 export function MainLayout() {
   const [currentStep, setCurrentStep] = useState<
-    "project" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "mcp" | "claude-settings" | "settings" | "help"
+    "project" | "configure-agents" | "configure-teams" | "skills" | "hooks" | "mcp" | "constitution" | "claude-settings" | "settings" | "help"
   >("project");
 
   const { projectPath } = useProjectStore();
@@ -24,15 +25,17 @@ export function MainLayout() {
       case "project":
         return <ProjectSelector />;
       case "configure-agents":
-        return <ConfigureAgentTab />;
+        return <AgentTab />;
       case "configure-teams":
-        return <ConfigureTeamTab />;
+        return <TeamTab />;
       case "skills":
         return <SkillsTab />;
       case "hooks":
         return <HooksTab />;
       case "mcp":
         return <McpTab />;
+      case "constitution":
+        return <ConstitutionTab />;
       case "claude-settings":
         return <ClaudeSettingsTab />;
       case "settings":
