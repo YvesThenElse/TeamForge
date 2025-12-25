@@ -154,6 +154,67 @@ Faire évoluer TeamForge d'un outil de gestion de configuration Claude Code vers
 
 ---
 
+## 3.4 Fonctionnalités ABSENTES de Claude Code (présentes ailleurs)
+
+### Gemini CLI → Claude Code (manquant)
+
+| Fonctionnalité | Description | Workaround Claude Code |
+|----------------|-------------|------------------------|
+| **Sandbox Docker natif** | Exécution isolée automatique dans conteneur | Manuel via `--dangerously-skip-permissions` + Docker externe |
+| **1M tokens context** | Fenêtre de 1 million de tokens | Limité à ~200K tokens |
+| **Trusted Folders** | Politiques d'exécution par dossier | Permissions globales uniquement |
+| **Auto-approve sélectif** | `"autoApprove": ["git ", "npm test"]` | Patterns dans `settings.json` (moins granulaire) |
+| **`/memory` commands** | `/memory add`, `/memory show`, `/memory refresh` | Aucun équivalent natif |
+| **Imagen/Veo intégration** | Génération d'images/vidéos via MCP | Via MCP tiers (non natif) |
+| **Open Source** | Code source Apache 2.0 | Propriétaire fermé |
+| **60 req/min gratuit** | Quota généreux sans frais | Payant dès le départ |
+
+### Cline → Claude Code (manquant)
+
+| Fonctionnalité | Description | Workaround Claude Code |
+|----------------|-------------|------------------------|
+| **Computer Use / Browser** | Contrôle navigateur, screenshots, clics, scroll | Aucun (sauf via MCP tiers) |
+| **Checkpoints granulaires** | Snapshot après CHAQUE action (file, command, etc.) | Git uniquement (manuel) |
+| **Diff View interactif** | Édition directe dans vue diff VS Code | Terminal seulement |
+| **Memory Bank structuré** | 6 fichiers MD hiérarchiques persistants | Aucun équivalent natif |
+| **35+ API Providers** | Anthropic, OpenAI, Gemini, Groq, Ollama, local... | Anthropic uniquement |
+| **Plan vs Act modes** | Modèles différents pour planif vs exécution | Même modèle pour tout |
+| **MCP Marketplace** | App store intégré avec installation one-click | Configuration manuelle JSON |
+| **Création dynamique outils** | "Add a tool that fetches Jira tickets" | Doit écrire le serveur MCP manuellement |
+| **Task History** | Historique tâches avec recherche/filtrage | Aucun historique persistant |
+| **Auto-approve catégoriel** | Read/Write/Terminal/Browser séparément | Tout ou rien |
+| **Session Chrome auth** | Utilise sessions connectées du navigateur | Aucun accès browser |
+
+### Tableau Récapitulatif Complet
+
+| Catégorie | Claude Code | Gemini CLI | Cline |
+|-----------|-------------|------------|-------|
+| **Sous-agents natifs** | ✅ | ❌ | ❌ |
+| **Hooks (Pre/Post)** | ✅ | ❌ | ❌ |
+| **Plugins système** | ✅ | ❌ | ❌ |
+| **Sandbox natif** | ❌ | ✅ Docker | ❌ |
+| **Context 1M tokens** | ❌ (~200K) | ✅ | ❌ (dépend modèle) |
+| **Browser automation** | ❌ | ❌ | ✅ |
+| **Checkpoints** | ❌ | ❌ | ✅ |
+| **Diff view** | ❌ | ❌ | ✅ |
+| **Memory persistante** | ❌ | ✅ `/memory` | ✅ Memory Bank |
+| **Multi-provider** | ❌ | ❌ | ✅ 35+ |
+| **Plan/Act modes** | ❌ | ❌ | ✅ |
+| **MCP Marketplace** | ❌ | ❌ | ✅ |
+| **Open source** | ❌ | ✅ | ✅ |
+| **Génération images** | ❌ | ✅ Imagen | ❌ |
+
+### Implications pour TeamForge
+
+Ces écarts signifient que TeamForge devra :
+
+1. **Documenter les limitations** : Indiquer clairement quelles fonctionnalités ne sont pas transférables
+2. **Proposer des alternatives** : Pour Memory Bank (Cline) → suggérer CLAUDE.md structuré
+3. **Ignorer gracieusement** : Ne pas générer de config pour des fonctionnalités non supportées
+4. **Étendre via MCP** : Certaines fonctionnalités (browser, images) peuvent être comblées via MCP
+
+---
+
 ## 4. Architecture Proposée
 
 ### 4.1 Modèle de Données Unifié
