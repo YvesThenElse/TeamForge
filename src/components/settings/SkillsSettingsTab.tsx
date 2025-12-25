@@ -192,7 +192,7 @@ export function SkillsSettingsTab() {
             <label className="text-sm font-medium">Repository URL</label>
             <Input
               type="url"
-              placeholder="https://github.com/user/skills-repo.git"
+              placeholder="https://github.com/YvesThenElse/TeamForge"
               value={localUrl}
               onChange={(e) => setLocalUrl(e.target.value)}
               className="mt-1"
@@ -214,7 +214,7 @@ export function SkillsSettingsTab() {
             <label className="text-sm font-medium">Source Path</label>
             <Input
               type="text"
-              placeholder="e.g., skills (leave empty for repo root)"
+              placeholder="examples/skills"
               value={localSourcePath}
               onChange={(e) => setLocalSourcePath(e.target.value)}
               className="mt-1"

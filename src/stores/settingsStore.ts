@@ -124,44 +124,45 @@ const DEFAULT_BRANCH = "main";
 const DEFAULT_MODEL = "sonnet";
 const DEFAULT_TOOLS = "*";
 const DEFAULT_CACHE_PATH = ".teamforge/cache";
+const DEFAULT_REPO_URL = "https://github.com/YvesThenElse/TeamForge";
 
 const DEFAULT_STATE = {
   // Agent source settings
-  agentRepoUrl: "",
+  agentRepoUrl: DEFAULT_REPO_URL,
   agentRepoBranch: DEFAULT_BRANCH,
-  agentSourcePath: "",
+  agentSourcePath: "examples/agents",
   agentDevPath: "",
   agentCachePath: `${DEFAULT_CACHE_PATH}/agents`,
   agentLastSync: null,
 
   // Skills source settings
-  skillRepoUrl: "",
+  skillRepoUrl: DEFAULT_REPO_URL,
   skillRepoBranch: DEFAULT_BRANCH,
-  skillSourcePath: "",
+  skillSourcePath: "examples/skills",
   skillDevPath: "",
   skillCachePath: `${DEFAULT_CACHE_PATH}/skills`,
   skillLastSync: null,
 
   // Hooks source settings
-  hookRepoUrl: "",
+  hookRepoUrl: DEFAULT_REPO_URL,
   hookRepoBranch: DEFAULT_BRANCH,
-  hookSourcePath: "",
+  hookSourcePath: "examples/hooks",
   hookDevPath: "",
   hookCachePath: `${DEFAULT_CACHE_PATH}/hooks`,
   hookLastSync: null,
 
   // MCP source settings
-  mcpRepoUrl: "",
+  mcpRepoUrl: DEFAULT_REPO_URL,
   mcpRepoBranch: DEFAULT_BRANCH,
-  mcpSourcePath: "",
+  mcpSourcePath: "examples/mcps",
   mcpDevPath: "",
   mcpCachePath: `${DEFAULT_CACHE_PATH}/mcps`,
   mcpLastSync: null,
 
   // Constitution source settings
-  constitutionRepoUrl: "",
+  constitutionRepoUrl: DEFAULT_REPO_URL,
   constitutionRepoBranch: DEFAULT_BRANCH,
-  constitutionSourcePath: "",
+  constitutionSourcePath: "examples/constitutions",
   constitutionDevPath: "",
   constitutionCachePath: `${DEFAULT_CACHE_PATH}/constitutions`,
   constitutionLastSync: null,
@@ -249,36 +250,38 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
 
       if (result.exists) {
         console.log("[settingsStore] Settings loaded from:", result.path);
+        // Use || for strings that should fall back to defaults when empty
+        // Use ?? for values where empty string is a valid value (like devPath)
         set({
-          agentRepoUrl: result.settings.agentRepoUrl ?? DEFAULT_STATE.agentRepoUrl,
-          agentRepoBranch: result.settings.agentRepoBranch ?? DEFAULT_STATE.agentRepoBranch,
-          agentSourcePath: result.settings.agentSourcePath ?? DEFAULT_STATE.agentSourcePath,
+          agentRepoUrl: result.settings.agentRepoUrl || DEFAULT_STATE.agentRepoUrl,
+          agentRepoBranch: result.settings.agentRepoBranch || DEFAULT_STATE.agentRepoBranch,
+          agentSourcePath: result.settings.agentSourcePath || DEFAULT_STATE.agentSourcePath,
           agentDevPath: result.settings.agentDevPath ?? DEFAULT_STATE.agentDevPath,
-          agentCachePath: result.settings.agentCachePath ?? DEFAULT_STATE.agentCachePath,
+          agentCachePath: result.settings.agentCachePath || DEFAULT_STATE.agentCachePath,
           agentLastSync: result.settings.agentLastSync ?? DEFAULT_STATE.agentLastSync,
-          skillRepoUrl: result.settings.skillRepoUrl ?? DEFAULT_STATE.skillRepoUrl,
-          skillRepoBranch: result.settings.skillRepoBranch ?? DEFAULT_STATE.skillRepoBranch,
-          skillSourcePath: result.settings.skillSourcePath ?? DEFAULT_STATE.skillSourcePath,
+          skillRepoUrl: result.settings.skillRepoUrl || DEFAULT_STATE.skillRepoUrl,
+          skillRepoBranch: result.settings.skillRepoBranch || DEFAULT_STATE.skillRepoBranch,
+          skillSourcePath: result.settings.skillSourcePath || DEFAULT_STATE.skillSourcePath,
           skillDevPath: result.settings.skillDevPath ?? DEFAULT_STATE.skillDevPath,
-          skillCachePath: result.settings.skillCachePath ?? DEFAULT_STATE.skillCachePath,
+          skillCachePath: result.settings.skillCachePath || DEFAULT_STATE.skillCachePath,
           skillLastSync: result.settings.skillLastSync ?? DEFAULT_STATE.skillLastSync,
-          hookRepoUrl: result.settings.hookRepoUrl ?? DEFAULT_STATE.hookRepoUrl,
-          hookRepoBranch: result.settings.hookRepoBranch ?? DEFAULT_STATE.hookRepoBranch,
-          hookSourcePath: result.settings.hookSourcePath ?? DEFAULT_STATE.hookSourcePath,
+          hookRepoUrl: result.settings.hookRepoUrl || DEFAULT_STATE.hookRepoUrl,
+          hookRepoBranch: result.settings.hookRepoBranch || DEFAULT_STATE.hookRepoBranch,
+          hookSourcePath: result.settings.hookSourcePath || DEFAULT_STATE.hookSourcePath,
           hookDevPath: result.settings.hookDevPath ?? DEFAULT_STATE.hookDevPath,
-          hookCachePath: result.settings.hookCachePath ?? DEFAULT_STATE.hookCachePath,
+          hookCachePath: result.settings.hookCachePath || DEFAULT_STATE.hookCachePath,
           hookLastSync: result.settings.hookLastSync ?? DEFAULT_STATE.hookLastSync,
-          mcpRepoUrl: result.settings.mcpRepoUrl ?? DEFAULT_STATE.mcpRepoUrl,
-          mcpRepoBranch: result.settings.mcpRepoBranch ?? DEFAULT_STATE.mcpRepoBranch,
-          mcpSourcePath: result.settings.mcpSourcePath ?? DEFAULT_STATE.mcpSourcePath,
+          mcpRepoUrl: result.settings.mcpRepoUrl || DEFAULT_STATE.mcpRepoUrl,
+          mcpRepoBranch: result.settings.mcpRepoBranch || DEFAULT_STATE.mcpRepoBranch,
+          mcpSourcePath: result.settings.mcpSourcePath || DEFAULT_STATE.mcpSourcePath,
           mcpDevPath: result.settings.mcpDevPath ?? DEFAULT_STATE.mcpDevPath,
-          mcpCachePath: result.settings.mcpCachePath ?? DEFAULT_STATE.mcpCachePath,
+          mcpCachePath: result.settings.mcpCachePath || DEFAULT_STATE.mcpCachePath,
           mcpLastSync: result.settings.mcpLastSync ?? DEFAULT_STATE.mcpLastSync,
-          constitutionRepoUrl: result.settings.constitutionRepoUrl ?? DEFAULT_STATE.constitutionRepoUrl,
-          constitutionRepoBranch: result.settings.constitutionRepoBranch ?? DEFAULT_STATE.constitutionRepoBranch,
-          constitutionSourcePath: result.settings.constitutionSourcePath ?? DEFAULT_STATE.constitutionSourcePath,
+          constitutionRepoUrl: result.settings.constitutionRepoUrl || DEFAULT_STATE.constitutionRepoUrl,
+          constitutionRepoBranch: result.settings.constitutionRepoBranch || DEFAULT_STATE.constitutionRepoBranch,
+          constitutionSourcePath: result.settings.constitutionSourcePath || DEFAULT_STATE.constitutionSourcePath,
           constitutionDevPath: result.settings.constitutionDevPath ?? DEFAULT_STATE.constitutionDevPath,
-          constitutionCachePath: result.settings.constitutionCachePath ?? DEFAULT_STATE.constitutionCachePath,
+          constitutionCachePath: result.settings.constitutionCachePath || DEFAULT_STATE.constitutionCachePath,
           constitutionLastSync: result.settings.constitutionLastSync ?? DEFAULT_STATE.constitutionLastSync,
           autoSync: result.settings.autoSync ?? DEFAULT_STATE.autoSync,
           theme: result.settings.theme ?? DEFAULT_STATE.theme,
