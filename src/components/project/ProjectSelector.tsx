@@ -1,17 +1,19 @@
 import { useState, useEffect } from "react";
-import { FolderOpen, Loader2, Clock, X, CheckCircle, XCircle, Info, ExternalLink, Wrench, BookOpen, Eye, Code, Server } from "lucide-react";
+import { FolderOpen, Loader2, Clock, X, CheckCircle, XCircle, Info, ExternalLink, Wrench, BookOpen, Eye, Code, Server, Home, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { AISystemLogo } from "@/components/ui/AILogos";
 import { useProject } from "@/hooks/useProject";
 import { getRecentProjects, removeRecentProject, type RecentProject } from "@/lib/recentProjects";
-import type { ClaudeInfo, GlobalClaudeInfo } from "@/types/claudeInfo";
 import type { AgentFile } from "@/types/agentFile";
 import type { Skill } from "@/types/skill";
 import type { McpServer } from "@/types/mcp";
+import type { AISystem } from "@/types/constitution";
 import { AgentDetailModal } from "@/components/agents/AgentDetailModal";
 import { SkillDetailModal } from "@/components/skills/SkillDetailModal";
 import * as electron from "@/services/electron";
+import type { AllDeployedConfigs, DeployedClaudeConfig, DeployedGeminiConfig, DeployedClineConfig, DeployedGeminiGlobalConfig } from "@/services/electron";
 
 // Type for deployed hooks from settings.json
 interface DeployedHook {
@@ -23,8 +25,7 @@ interface DeployedHook {
 
 export function ProjectSelector() {
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
-  const [projectClaudeInfo, setProjectClaudeInfo] = useState<ClaudeInfo | null>(null);
-  const [globalClaudeInfo, setGlobalClaudeInfo] = useState<GlobalClaudeInfo | null>(null);
+  const [allDeployedConfigs, setAllDeployedConfigs] = useState<AllDeployedConfigs | null>(null);
   const [agents, setAgents] = useState<AgentFile[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [hooks, setHooks] = useState<DeployedHook[]>([]);
@@ -32,27 +33,18 @@ export function ProjectSelector() {
   const [selectedAgent, setSelectedAgent] = useState<AgentFile | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
   const [loadingConfig, setLoadingConfig] = useState(false);
+  const [expandedSystem, setExpandedSystem] = useState<AISystem | null>("claude-code");
   const { projectPath, analysis, isAnalyzing, selectProjectFolder, analyzeProjectFolder } = useProject();
 
   useEffect(() => {
     setRecentProjects(getRecentProjects());
 
-    // Load global Claude config (from ~/.claude/)
-    const loadGlobalClaudeConfig = async () => {
-      try {
-        const info = await electron.getGlobalClaudeInfo();
-        setGlobalClaudeInfo(info);
-      } catch (err) {
-        console.error("Failed to load global Claude info:", err);
-      }
-    };
-    loadGlobalClaudeConfig();
-
-    // Load project Claude config and deployed agents/skills/hooks/mcps
+    // Load project config and deployed agents/skills/hooks/mcps
     if (projectPath) {
       loadProjectConfiguration();
+      loadAllDeployedConfigs();
     } else {
-      setProjectClaudeInfo(null);
+      setAllDeployedConfigs(null);
       setAgents([]);
       setSkills([]);
       setHooks([]);
@@ -60,20 +52,28 @@ export function ProjectSelector() {
     }
   }, [projectPath]);
 
+  const loadAllDeployedConfigs = async () => {
+    if (!projectPath) return;
+    try {
+      const configs = await electron.detectAllDeployedConfigs(projectPath);
+      setAllDeployedConfigs(configs);
+    } catch (err) {
+      console.error("Failed to load deployed configs:", err);
+    }
+  };
+
   const loadProjectConfiguration = async () => {
     if (!projectPath) return;
 
     setLoadingConfig(true);
     try {
-      const [claudeInfo, agentFiles, skillFiles, hookList, mcpList] = await Promise.all([
-        electron.getClaudeInfo(projectPath),
+      const [agentFiles, skillFiles, hookList, mcpList] = await Promise.all([
         electron.listAgentFiles(projectPath),
         electron.listSkills(projectPath),
         electron.listHooks(projectPath).catch(() => [] as DeployedHook[]),
         electron.listMcpServers(projectPath).catch(() => [] as McpServer[]),
       ]);
 
-      setProjectClaudeInfo(claudeInfo);
       setAgents(agentFiles);
       setSkills(skillFiles);
       setHooks(hookList);
@@ -280,214 +280,227 @@ export function ProjectSelector() {
         </CardContent>
       </Card>
 
-      {/* Claude Configuration Info */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Project Claude Config (.claude/ in project) */}
+      {/* AI Systems Deployed Configurations */}
+      {projectPath && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
+            <CardTitle className="flex items-center gap-2">
               <Info className="h-5 w-5" />
-              <span>Project Claude Config</span>
+              Deployed AI Configurations
             </CardTitle>
             <CardDescription>
-              Configuration in project's .claude/ directory
+              Configuration files detected for each AI system
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {!projectPath ? (
-              <div className="text-sm text-muted-foreground text-center py-4">
-                Select a project to view its Claude configuration
-              </div>
-            ) : projectClaudeInfo ? (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex items-center space-x-2">
-                    {projectClaudeInfo.exists ? (
-                      <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-red-500 shrink-0" />
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">.claude/</p>
-                      <p className="text-xs text-muted-foreground">
-                        {projectClaudeInfo.exists ? "Present" : "Not found"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    {projectClaudeInfo.agentsDir ? (
-                      <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-red-500 shrink-0" />
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">agents/</p>
-                      <p className="text-xs text-muted-foreground">
-                        {projectClaudeInfo.agentsDir ? "Present" : "Not found"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    {projectClaudeInfo.skillsDir ? (
-                      <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-red-500 shrink-0" />
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">skills/</p>
-                      <p className="text-xs text-muted-foreground">
-                        {projectClaudeInfo.skillsDir ? "Present" : "Not found"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    {projectClaudeInfo.settingsFile ? (
-                      <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
-                    ) : (
-                      <Info className="h-4 w-4 text-muted-foreground shrink-0" />
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">settings</p>
-                      <p className="text-xs text-muted-foreground">
-                        {projectClaudeInfo.settingsFile ? "Present" : "Optional"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {projectClaudeInfo.settings && Object.keys(projectClaudeInfo.settings).length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-sm font-medium mb-2">Settings:</p>
-                    <div className="bg-muted p-2 rounded-lg space-y-1 max-h-32 overflow-y-auto">
-                      {Object.entries(projectClaudeInfo.settings).map(([key, value]) => (
-                        <div key={key} className="flex justify-between text-xs gap-2">
-                          <span className="text-muted-foreground">{key}:</span>
-                          <span className="font-mono truncate">{String(value)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {!projectClaudeInfo.exists && (
-                  <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2 mt-2">
-                    <p className="text-xs text-yellow-600 dark:text-yellow-500">
-                      No .claude/ directory found in this project
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : (
+            {!allDeployedConfigs ? (
               <div className="flex items-center justify-center py-4">
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Global Claude Config (~/.claude/) */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Info className="h-5 w-5" />
-              <span>Global Claude Config</span>
-            </CardTitle>
-            <CardDescription>
-              User configuration in ~/.claude/ directory
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {globalClaudeInfo ? (
+            ) : (
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex items-center space-x-2">
-                    {globalClaudeInfo.exists ? (
-                      <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-red-500 shrink-0" />
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">~/.claude/</p>
-                      <p className="text-xs text-muted-foreground">
-                        {globalClaudeInfo.exists ? "Present" : "Not found"}
-                      </p>
+                {/* Claude Code */}
+                <div
+                  className={`rounded-lg border ${allDeployedConfigs["claude-code"]?.deployed ? "border-green-500/50 bg-green-500/5" : "border-border"}`}
+                >
+                  <button
+                    className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors"
+                    onClick={() => setExpandedSystem(expandedSystem === "claude-code" ? null : "claude-code")}
+                  >
+                    <div className="flex items-center gap-3">
+                      <AISystemLogo system="claude-code" className="h-5 w-5" />
+                      <span className="font-medium">Claude Code</span>
+                      {allDeployedConfigs["claude-code"]?.deployed ? (
+                        <Badge variant="default" className="bg-green-600 text-xs">Deployed</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs">Not configured</Badge>
+                      )}
                     </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    {globalClaudeInfo.agentsDir ? (
-                      <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                    {expandedSystem === "claude-code" ? (
+                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
                     ) : (
-                      <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
                     )}
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">agents/</p>
-                      <p className="text-xs text-muted-foreground">
-                        {globalClaudeInfo.agentsDir ? `${globalClaudeInfo.agentsCount} agents` : "Not found"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    {globalClaudeInfo.settingsJsonFile ? (
-                      <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
-                    ) : (
-                      <Info className="h-4 w-4 text-muted-foreground shrink-0" />
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">settings.json</p>
-                      <p className="text-xs text-muted-foreground">
-                        {globalClaudeInfo.settingsJsonFile ? "Present" : "Optional"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {globalClaudeInfo.claudePath && (
-                    <div className="flex items-center space-x-2 col-span-2">
-                      <Info className="h-4 w-4 text-blue-500 shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium">Path</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {globalClaudeInfo.claudePath}
-                        </p>
+                  </button>
+                  {expandedSystem === "claude-code" && allDeployedConfigs["claude-code"] && (
+                    <div className="px-3 pb-3 pt-0">
+                      <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
+                          <FolderOpen className="h-4 w-4 text-blue-500" />
+                          Project Configuration
+                        </div>
+                        {(() => {
+                          const config = allDeployedConfigs["claude-code"]?.project as DeployedClaudeConfig | null;
+                          if (!config) return <p className="text-xs text-muted-foreground">No configuration detected</p>;
+                          return (
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div className="flex items-center gap-2">
+                                {config.directory?.exists ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-muted-foreground" />}
+                                <code>.claude/</code>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {config.constitution?.exists ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-muted-foreground" />}
+                                <code>CLAUDE.md</code>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {(config.agents?.count ?? 0) > 0 ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-muted-foreground" />}
+                                <code>agents/</code>
+                                {(config.agents?.count ?? 0) > 0 && <span className="text-muted-foreground">({config.agents?.count})</span>}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {(config.skills?.count ?? 0) > 0 ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-muted-foreground" />}
+                                <code>skills/</code>
+                                {(config.skills?.count ?? 0) > 0 && <span className="text-muted-foreground">({config.skills?.count})</span>}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {config.settings?.exists ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-muted-foreground" />}
+                                <code>settings.json</code>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {config.mcp?.exists ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-muted-foreground" />}
+                                <code>.mcp.json</code>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   )}
                 </div>
 
-                {globalClaudeInfo.settings && Object.keys(globalClaudeInfo.settings).length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-sm font-medium mb-2">Settings:</p>
-                    <div className="bg-muted p-2 rounded-lg space-y-1 max-h-32 overflow-y-auto">
-                      {Object.entries(globalClaudeInfo.settings).map(([key, value]) => (
-                        <div key={key} className="flex justify-between text-xs gap-2">
-                          <span className="text-muted-foreground">{key}:</span>
-                          <span className="font-mono truncate">{String(value)}</span>
-                        </div>
-                      ))}
+                {/* Gemini CLI */}
+                <div
+                  className={`rounded-lg border ${allDeployedConfigs["gemini-cli"]?.deployed ? "border-green-500/50 bg-green-500/5" : "border-border"}`}
+                >
+                  <button
+                    className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors"
+                    onClick={() => setExpandedSystem(expandedSystem === "gemini-cli" ? null : "gemini-cli")}
+                  >
+                    <div className="flex items-center gap-3">
+                      <AISystemLogo system="gemini-cli" className="h-5 w-5" />
+                      <span className="font-medium">Gemini CLI</span>
+                      {allDeployedConfigs["gemini-cli"]?.deployed ? (
+                        <Badge variant="default" className="bg-green-600 text-xs">Deployed</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs">Not configured</Badge>
+                      )}
                     </div>
-                  </div>
-                )}
+                    {expandedSystem === "gemini-cli" ? (
+                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </button>
+                  {expandedSystem === "gemini-cli" && allDeployedConfigs["gemini-cli"] && (
+                    <div className="px-3 pb-3 pt-0 space-y-3">
+                      {/* Project */}
+                      <div className="bg-muted/50 rounded-lg p-3">
+                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
+                          <FolderOpen className="h-4 w-4 text-blue-500" />
+                          Project Configuration
+                        </div>
+                        {(() => {
+                          const config = allDeployedConfigs["gemini-cli"]?.project as DeployedGeminiConfig | null;
+                          return (
+                            <div className="flex items-center gap-2 text-xs">
+                              {config?.constitution?.exists ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-muted-foreground" />}
+                              <code>GEMINI.md</code>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                      {/* Global */}
+                      <div className="bg-muted/50 rounded-lg p-3">
+                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
+                          <Home className="h-4 w-4 text-purple-500" />
+                          Global Configuration
+                        </div>
+                        {(() => {
+                          const config = allDeployedConfigs["gemini-cli"]?.global as DeployedGeminiGlobalConfig | null;
+                          if (!config) return <p className="text-xs text-muted-foreground">No global configuration</p>;
+                          return (
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div className="flex items-center gap-2">
+                                {config.directory?.exists ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-muted-foreground" />}
+                                <code>~/.gemini/</code>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {config.constitution?.exists ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-muted-foreground" />}
+                                <code>GEMINI.md</code>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {config.settings?.exists ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-muted-foreground" />}
+                                <code>settings.json</code>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-                {!globalClaudeInfo.exists && (
-                  <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2 mt-2">
-                    <p className="text-xs text-yellow-600 dark:text-yellow-500">
-                      No global Claude configuration found. Install Claude Code to create ~/.claude/ directory.
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                {/* Cline */}
+                <div
+                  className={`rounded-lg border ${allDeployedConfigs["cline"]?.deployed ? "border-green-500/50 bg-green-500/5" : "border-border"}`}
+                >
+                  <button
+                    className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors"
+                    onClick={() => setExpandedSystem(expandedSystem === "cline" ? null : "cline")}
+                  >
+                    <div className="flex items-center gap-3">
+                      <AISystemLogo system="cline" className="h-5 w-5" />
+                      <span className="font-medium">Cline</span>
+                      {allDeployedConfigs["cline"]?.deployed ? (
+                        <Badge variant="default" className="bg-green-600 text-xs">Deployed</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs">Not configured</Badge>
+                      )}
+                    </div>
+                    {expandedSystem === "cline" ? (
+                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </button>
+                  {expandedSystem === "cline" && allDeployedConfigs["cline"] && (
+                    <div className="px-3 pb-3 pt-0">
+                      <div className="bg-muted/50 rounded-lg p-3">
+                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
+                          <FolderOpen className="h-4 w-4 text-blue-500" />
+                          Project Configuration
+                        </div>
+                        {(() => {
+                          const config = allDeployedConfigs["cline"]?.project as DeployedClineConfig | null;
+                          if (!config) return <p className="text-xs text-muted-foreground">No configuration detected</p>;
+                          return (
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div className="flex items-center gap-2">
+                                {config.rules?.exists ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-muted-foreground" />}
+                                <code>.clinerules</code>
+                                {config.rules?.isFolder && <span className="text-muted-foreground">(folder)</span>}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {config.memoryBank?.exists ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-muted-foreground" />}
+                                <code>memory-bank/</code>
+                                {(config.memoryBank?.fileCount ?? 0) > 0 && <span className="text-muted-foreground">({config.memoryBank?.fileCount})</span>}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {config.mcp?.exists ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-muted-foreground" />}
+                                <code>.vscode/mcp.json</code>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
-      </div>
+      )}
 
       {/* Deployed Agents - Detailed Table */}
       {projectPath && agents.length > 0 && (

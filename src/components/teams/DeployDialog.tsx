@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { X, Loader2, AlertTriangle, Check, Rocket } from "lucide-react";
+import { X, Loader2, AlertTriangle, Check, Rocket, Home, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { AISystemLogo } from "@/components/ui/AILogos";
 import { useProjectStore } from "@/stores/projectStore";
 import * as electron from "@/services/electron";
 import type { AISystem } from "@/types/constitution";
@@ -15,31 +16,70 @@ interface DeployDialogProps {
   onDeployComplete?: (result: MultiDeploymentResult) => void;
 }
 
-const AI_SYSTEMS: Array<{
+type DeploymentLocation = "project" | "global" | "both";
+
+interface AISystemConfig {
   id: AISystem;
   name: string;
   description: string;
-}> = [
+  locations: {
+    project?: { path: string; description: string };
+    global?: { path: string; description: string };
+  };
+  defaultLocation: DeploymentLocation;
+}
+
+const AI_SYSTEMS: AISystemConfig[] = [
   {
     id: "claude-code",
     name: "Claude Code",
-    description: "Deploy to .claude/ directory with CLAUDE.md",
+    description: "Claude's CLI for coding assistance",
+    locations: {
+      project: {
+        path: ".claude/ + CLAUDE.md",
+        description: "Project-specific configuration",
+      },
+    },
+    defaultLocation: "project",
   },
   {
     id: "gemini-cli",
     name: "Gemini CLI",
-    description: "Deploy to ~/.gemini/ with GEMINI.md",
+    description: "Google's Gemini CLI tool",
+    locations: {
+      project: {
+        path: "GEMINI.md",
+        description: "Project-specific constitution",
+      },
+      global: {
+        path: "~/.gemini/",
+        description: "Global settings and MCP servers",
+      },
+    },
+    defaultLocation: "both",
   },
   {
     id: "cline",
     name: "Cline",
-    description: "Deploy to .clinerules with memory-bank/",
+    description: "VS Code AI coding assistant",
+    locations: {
+      project: {
+        path: ".clinerules + .vscode/mcp.json",
+        description: "Project-specific rules and MCP",
+      },
+    },
+    defaultLocation: "project",
   },
 ];
 
 export function DeployDialog({ team, onClose, onDeployComplete }: DeployDialogProps) {
   const { projectPath } = useProjectStore();
   const [selectedSystems, setSelectedSystems] = useState<AISystem[]>(["claude-code"]);
+  const [deploymentLocations, setDeploymentLocations] = useState<Record<AISystem, DeploymentLocation>>({
+    "claude-code": "project",
+    "gemini-cli": "both",
+    "cline": "project",
+  });
   const [capabilities, setCapabilities] = useState<Record<AISystem, SystemCapabilities> | null>(null);
   const [validation, setValidation] = useState<DeploymentValidation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -116,11 +156,21 @@ export function DeployDialog({ team, onClose, onDeployComplete }: DeployDialogPr
         security: team.security,
       };
 
+      // Build options with deployment locations
+      const options: Record<string, any> = { clearExisting: true };
+
+      // Add Gemini-specific options
+      if (selectedSystems.includes("gemini-cli")) {
+        const geminiLocation = deploymentLocations["gemini-cli"];
+        options.deployGlobal = geminiLocation === "global" || geminiLocation === "both";
+        options.deployProject = geminiLocation === "project" || geminiLocation === "both";
+      }
+
       const result = await electron.deployMultiple(
         deploymentTeam,
         selectedSystems,
         projectPath,
-        { clearExisting: true }
+        options
       );
 
       setDeployResult(result);
@@ -253,15 +303,96 @@ export function DeployDialog({ team, onClose, onDeployComplete }: DeployDialogPr
                               onChange={() => {}}
                               className="h-4 w-4"
                             />
+                            <AISystemLogo system={system.id} className="h-5 w-5" />
                             {system.name}
                           </CardTitle>
                           {isSelected && <Check className="h-5 w-5 text-primary" />}
                         </div>
                         <CardDescription>{system.description}</CardDescription>
                       </CardHeader>
-                      <CardContent className="pt-0">
+                      <CardContent className="pt-0 space-y-3">
+                        {/* Deployment Locations */}
+                        {isSelected && (system.locations.project && system.locations.global) && (
+                          <div
+                            className="p-3 rounded-lg bg-muted/50 space-y-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="text-xs font-medium text-muted-foreground mb-2">
+                              Deployment Location
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={`location-${system.id}`}
+                                  checked={deploymentLocations[system.id] === "project"}
+                                  onChange={() => setDeploymentLocations(prev => ({
+                                    ...prev,
+                                    [system.id]: "project"
+                                  }))}
+                                  className="h-3 w-3"
+                                />
+                                <FolderOpen className="h-4 w-4 text-blue-500" />
+                                <span className="text-sm">Project only</span>
+                                <code className="text-xs bg-muted px-1 rounded ml-auto">
+                                  {system.locations.project?.path}
+                                </code>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={`location-${system.id}`}
+                                  checked={deploymentLocations[system.id] === "global"}
+                                  onChange={() => setDeploymentLocations(prev => ({
+                                    ...prev,
+                                    [system.id]: "global"
+                                  }))}
+                                  className="h-3 w-3"
+                                />
+                                <Home className="h-4 w-4 text-purple-500" />
+                                <span className="text-sm">Global only</span>
+                                <code className="text-xs bg-muted px-1 rounded ml-auto">
+                                  {system.locations.global?.path}
+                                </code>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={`location-${system.id}`}
+                                  checked={deploymentLocations[system.id] === "both"}
+                                  onChange={() => setDeploymentLocations(prev => ({
+                                    ...prev,
+                                    [system.id]: "both"
+                                  }))}
+                                  className="h-3 w-3"
+                                />
+                                <div className="flex gap-0.5">
+                                  <FolderOpen className="h-4 w-4 text-blue-500" />
+                                  <Home className="h-4 w-4 text-purple-500" />
+                                </div>
+                                <span className="text-sm">Both</span>
+                                <span className="text-xs text-muted-foreground ml-auto">
+                                  Project + Global
+                                </span>
+                              </label>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Single location display */}
+                        {isSelected && !(system.locations.project && system.locations.global) && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <FolderOpen className="h-4 w-4 text-blue-500" />
+                            <span>Project:</span>
+                            <code className="text-xs bg-muted px-1 rounded">
+                              {system.locations.project?.path}
+                            </code>
+                          </div>
+                        )}
+
+                        {/* Capability badges */}
                         {caps && (
-                          <div className="flex flex-wrap gap-1 mb-2">
+                          <div className="flex flex-wrap gap-1">
                             {caps.map((cap) => (
                               <Badge key={cap} variant="secondary" className="text-xs">
                                 {cap}
@@ -269,6 +400,8 @@ export function DeployDialog({ team, onClose, onDeployComplete }: DeployDialogPr
                             ))}
                           </div>
                         )}
+
+                        {/* Warnings */}
                         {warnings.length > 0 && (
                           <div className="space-y-1">
                             {warnings.map((w, i) => (

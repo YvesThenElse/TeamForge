@@ -6,8 +6,10 @@ import { Badge } from "@/components/ui/Badge";
 import { useTeamStore } from "@/stores/teamStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useAgentStore } from "@/stores/agentStore";
-import { listTeams, deleteTeam as deleteTeamAPI, getDeployedTeam, deployTeam, generateTeamAgents } from "@/services/electron";
+import { listTeams, deleteTeam as deleteTeamAPI, getDeployedTeam } from "@/services/electron";
+import { DeployDialog } from "@/components/teams/DeployDialog";
 import type { Team } from "@/types/team";
+import type { MultiDeploymentResult } from "@/services/electron";
 
 interface TeamListProps {
   onEditTeam: (team: Team) => void;
@@ -19,7 +21,7 @@ export function TeamList({ onEditTeam, onCreateTeam }: TeamListProps) {
   const { projectPath } = useProjectStore();
   const { library } = useAgentStore();
   const [isLoading, setIsLoading] = useState(true);
-  const [deployingTeamId, setDeployingTeamId] = useState<string | null>(null);
+  const [deployDialogTeam, setDeployDialogTeam] = useState<Team | null>(null);
 
   useEffect(() => {
     loadTeams();
@@ -75,9 +77,7 @@ export function TeamList({ onEditTeam, onCreateTeam }: TeamListProps) {
     onEditTeam(team);
   };
 
-  const handleDeployTeam = async (team: Team) => {
-    if (!projectPath) return;
-
+  const handleDeployTeam = (team: Team) => {
     // Check both old workflow and new agents structure
     const hasElements =
       (team.agents && team.agents.length > 0) ||
@@ -88,30 +88,14 @@ export function TeamList({ onEditTeam, onCreateTeam }: TeamListProps) {
       return;
     }
 
-    if (!confirm(`Deploy "${team.name}" to .claude/ directory?\n\nThis will replace your current Claude Code configuration.`)) {
-      return;
-    }
+    setDeployDialogTeam(team);
+  };
 
-    setDeployingTeamId(team.id);
-
-    try {
-      // Generate agent files
-      const genResult = await generateTeamAgents(projectPath, team.id, library);
-      console.log(`Generated ${genResult.filesGenerated} agent files`);
-
-      // Deploy the team
-      const deployResult = await deployTeam(projectPath, team.id);
-
+  const handleDeployComplete = async (result: MultiDeploymentResult) => {
+    if (result.success) {
       // Reload deployed team status
-      const deployed = await getDeployedTeam(projectPath);
+      const deployed = await getDeployedTeam(projectPath!);
       setDeployedTeam(deployed);
-
-      alert(`${deployResult.message}\n\nGenerated ${genResult.filesGenerated} agent files.\n\nYou can now use this team in Claude Code!`);
-    } catch (error) {
-      console.error("Failed to deploy team:", error);
-      alert(`Failed to deploy team: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setDeployingTeamId(null);
     }
   };
 
@@ -164,7 +148,6 @@ export function TeamList({ onEditTeam, onCreateTeam }: TeamListProps) {
         <div className="grid gap-4 md:grid-cols-2">
           {teams.map((team) => {
             const isDeployed = deployedTeam?.teamId === team.id;
-            const isDeploying = deployingTeamId === team.id;
 
             return (
               <Card key={team.id} className={`hover:shadow-md transition-shadow ${isDeployed ? 'border-green-500 border-2' : ''}`}>
@@ -249,14 +232,12 @@ export function TeamList({ onEditTeam, onCreateTeam }: TeamListProps) {
                     <div className="pt-2">
                       <Button
                         onClick={() => handleDeployTeam(team)}
-                        disabled={isDeploying || isDeployed || (!team.agents?.length && !team.workflow?.length)}
+                        disabled={isDeployed || (!team.agents?.length && !team.workflow?.length)}
                         size="sm"
                         className="w-full"
                         variant={isDeployed ? "outline" : "default"}
                       >
-                        {isDeploying ? (
-                          <>Deploying...</>
-                        ) : isDeployed ? (
+                        {isDeployed ? (
                           <>
                             <CheckCircle2 className="mr-2 h-4 w-4" />
                             Already Deployed
@@ -275,6 +256,15 @@ export function TeamList({ onEditTeam, onCreateTeam }: TeamListProps) {
             );
           })}
         </div>
+      )}
+
+      {/* Deploy Dialog */}
+      {deployDialogTeam && (
+        <DeployDialog
+          team={deployDialogTeam}
+          onClose={() => setDeployDialogTeam(null)}
+          onDeployComplete={handleDeployComplete}
+        />
       )}
     </div>
   );

@@ -220,6 +220,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('deployment:deploy', { team, targetSystem, projectPath, options }),
   deployMultiple: (team, targetSystems, projectPath, options) =>
     ipcRenderer.invoke('deployment:deployMultiple', { team, targetSystems, projectPath, options }),
+  detectDeployedConfig: (system, projectPath) =>
+    ipcRenderer.invoke('deployment:detectConfig', { system, projectPath }),
+  detectAllDeployedConfigs: (projectPath) =>
+    ipcRenderer.invoke('deployment:detectAllConfigs', { projectPath }),
 
   // Claude Settings commands
   loadClaudeSettings: (projectPath, settingsFileName) =>

@@ -150,6 +150,51 @@ export interface MultiDeploymentResult {
   success: boolean;
 }
 
+// Deployed configuration detection types
+export interface DeployedFileInfo {
+  exists: boolean;
+  path: string;
+  modifiedAt?: string;
+  count?: number;
+  isFolder?: boolean;
+  fileCount?: number;
+}
+
+export interface DeployedClaudeConfig {
+  directory: DeployedFileInfo;
+  constitution: DeployedFileInfo;
+  constitutionLocal: DeployedFileInfo;
+  agents: DeployedFileInfo;
+  skills: DeployedFileInfo;
+  settings: DeployedFileInfo;
+  mcp: DeployedFileInfo;
+}
+
+export interface DeployedGeminiConfig {
+  constitution: DeployedFileInfo;
+}
+
+export interface DeployedGeminiGlobalConfig {
+  directory: DeployedFileInfo;
+  constitution: DeployedFileInfo;
+  settings: DeployedFileInfo;
+}
+
+export interface DeployedClineConfig {
+  rules: DeployedFileInfo;
+  memoryBank: DeployedFileInfo;
+  mcp: DeployedFileInfo;
+}
+
+export interface DeployedSystemConfig {
+  system: AISystem;
+  deployed: boolean;
+  project: DeployedClaudeConfig | DeployedGeminiConfig | DeployedClineConfig | null;
+  global: DeployedGeminiGlobalConfig | null;
+}
+
+export type AllDeployedConfigs = Record<AISystem, DeployedSystemConfig>;
+
 // Access the Electron API exposed via preload script
 declare global {
   interface Window {
@@ -367,6 +412,8 @@ declare global {
       validateDeployment: (team: DeploymentTeam, targetSystems: AISystem[], projectPath: string) => Promise<DeploymentValidation>;
       deploy: (team: DeploymentTeam, targetSystem: AISystem, projectPath: string, options?: DeploymentOptions) => Promise<DeploymentResult>;
       deployMultiple: (team: DeploymentTeam, targetSystems: AISystem[], projectPath: string, options?: DeploymentOptions) => Promise<MultiDeploymentResult>;
+      detectDeployedConfig: (system: AISystem, projectPath: string) => Promise<DeployedSystemConfig>;
+      detectAllDeployedConfigs: (projectPath: string) => Promise<AllDeployedConfigs>;
 
       // MCP Server commands
       listMcpServers: (projectPath: string) => Promise<McpServer[]>;
@@ -1228,4 +1275,17 @@ export async function deployMultiple(
   options?: DeploymentOptions
 ): Promise<MultiDeploymentResult> {
   return window.electronAPI.deployMultiple(team, targetSystems, projectPath, options);
+}
+
+export async function detectDeployedConfig(
+  system: AISystem,
+  projectPath: string
+): Promise<DeployedSystemConfig> {
+  return window.electronAPI.detectDeployedConfig(system, projectPath);
+}
+
+export async function detectAllDeployedConfigs(
+  projectPath: string
+): Promise<AllDeployedConfigs> {
+  return window.electronAPI.detectAllDeployedConfigs(projectPath);
 }
