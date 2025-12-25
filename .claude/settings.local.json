@@ -22,7 +22,10 @@
       "WebSearch",
       "WebFetch(domain:reactflow.dev)",
       "Bash(findstr:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(wc:*)",
+      "WebFetch(domain:google-gemini.github.io)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": []
