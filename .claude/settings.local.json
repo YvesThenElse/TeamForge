@@ -30,5 +30,18 @@
     ],
     "deny": [],
     "ask": []
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"[$(date '+%Y-%m-%d %H:%M:%S')] $TOOL_DESCRIPTION: $TOOL_COMMAND\" >> .claude/command-log.txt"
+          }
+        ]
+      }
+    ]
   }
 }
