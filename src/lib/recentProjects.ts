@@ -37,6 +37,20 @@ export function addRecentProject(project: RecentProject): void {
   }
 }
 
+export function updateRecentProjectTimestamp(path: string): void {
+  try {
+    const recent = getRecentProjects();
+    const updated = recent.map(p =>
+      p.path === path
+        ? { ...p, lastOpened: new Date().toISOString() }
+        : p
+    );
+    localStorage.setItem(RECENT_PROJECTS_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.error("Failed to update recent project timestamp:", err);
+  }
+}
+
 export function removeRecentProject(path: string): void {
   try {
     const recent = getRecentProjects();

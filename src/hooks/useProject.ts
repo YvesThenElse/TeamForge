@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useProjectStore } from "@/stores/projectStore";
 import * as electron from "@/services/electron";
-import { addRecentProject } from "@/lib/recentProjects";
+import { addRecentProject, updateRecentProjectTimestamp, getRecentProjects } from "@/lib/recentProjects";
 
 export function useProject() {
   const {
@@ -64,14 +64,23 @@ export function useProject() {
         const result = await electron.analyzeProject(path);
         setAnalysis(result);
 
-        // Add to recent projects
-        const projectName = path.split(/[\\/]/).filter(Boolean).pop() || path;
-        addRecentProject({
-          path: path,
-          name: projectName,
-          lastOpened: new Date().toISOString(),
-          projectType: result.projectType,
-        });
+        // Check if project is already in recent projects
+        const recentProjects = getRecentProjects();
+        const existsInRecent = recentProjects.some(p => p.path === path);
+
+        if (existsInRecent) {
+          // Just update timestamp without changing order
+          updateRecentProjectTimestamp(path);
+        } else {
+          // Add as new recent project
+          const projectName = path.split(/[\\/]/).filter(Boolean).pop() || path;
+          addRecentProject({
+            path: path,
+            name: projectName,
+            lastOpened: new Date().toISOString(),
+            projectType: result.projectType,
+          });
+        }
 
         return result;
       } catch (err) {

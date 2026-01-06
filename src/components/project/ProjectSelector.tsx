@@ -13,7 +13,7 @@ import type { AISystem } from "@/types/constitution";
 import { AgentDetailModal } from "@/components/agents/AgentDetailModal";
 import { SkillDetailModal } from "@/components/skills/SkillDetailModal";
 import * as electron from "@/services/electron";
-import type { AllDeployedConfigs, DeployedClaudeConfig, DeployedGeminiConfig, DeployedClineConfig, DeployedGeminiGlobalConfig } from "@/services/electron";
+import type { AllDeployedConfigs, DeployedClaudeConfig, DeployedClaudeGlobalConfig, DeployedGeminiConfig, DeployedClineConfig, DeployedGeminiGlobalConfig } from "@/services/electron";
 
 // Type for deployed hooks from settings.json
 interface DeployedHook {
@@ -155,8 +155,8 @@ export function ProjectSelector() {
         </p>
       </div>
 
-      {/* Recent Projects */}
-      {recentProjects.length > 0 && !projectPath && (
+      {/* Recent Projects - Always visible */}
+      {recentProjects.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -164,52 +164,68 @@ export function ProjectSelector() {
               <span>Recent Projects</span>
             </CardTitle>
             <CardDescription>
-              Open a recently accessed project
+              Switch between your recent projects
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {recentProjects.map((recent) => (
-                <div
-                  key={recent.path}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-                  onClick={() => handleSelectRecentProject(recent)}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{recent.name}</div>
-                    <div className="text-sm text-muted-foreground truncate">
-                      {recent.path}
-                    </div>
-                    {recent.projectType && (
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {recent.projectType}
-                      </div>
-                    )}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => handleRemoveRecentProject(recent.path, e)}
-                    className="ml-2 shrink-0"
+              {recentProjects.map((recent) => {
+                const isSelected = projectPath === recent.path;
+                return (
+                  <div
+                    key={recent.path}
+                    className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
+                      isSelected
+                        ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                        : "hover:bg-muted/50"
+                    }`}
+                    onClick={() => !isSelected && handleSelectRecentProject(recent)}
                   >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium truncate">{recent.name}</span>
+                        {isSelected && (
+                          <Badge variant="default" className="text-xs shrink-0">
+                            Active
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-sm text-muted-foreground truncate">
+                        {recent.path}
+                      </div>
+                      {recent.projectType && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {recent.projectType}
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => handleRemoveRecentProject(recent.path, e)}
+                      className="ml-2 shrink-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Local Folder */}
-      <Card>
+      {/* Selected Project / Browse for New Project */}
+      <Card className={projectPath ? "border-primary/50" : ""}>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <FolderOpen className="h-5 w-5" />
-            <span>Local Folder</span>
+            <span>{projectPath ? "Selected Project" : "Browse Project"}</span>
           </CardTitle>
           <CardDescription>
-            Select an existing project on your computer
+            {projectPath
+              ? "Currently active project configuration"
+              : "Select an existing project on your computer"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -221,6 +237,10 @@ export function ProjectSelector() {
                   {projectPath}
                 </div>
                 {analysis && (
+                  (analysis.frameworks?.length > 0) ||
+                  (analysis.languages && Object.keys(analysis.languages).length > 0) ||
+                  analysis.files?.total
+                ) && (
                   <div className="p-3 bg-muted rounded-md text-sm space-y-2">
                     {analysis.frameworks && analysis.frameworks.length > 0 && (
                       <div>
@@ -237,7 +257,7 @@ export function ProjectSelector() {
                           .join(", ")}
                       </div>
                     )}
-                    {analysis.files && (
+                    {analysis.files?.total && (
                       <div>
                         <span className="font-medium">Files:</span> {analysis.files.total}
                       </div>
@@ -300,8 +320,29 @@ export function ProjectSelector() {
             ) : (
               <div className="space-y-3">
                 {/* Claude Code */}
+                {(() => {
+                  const claudeConfig = allDeployedConfigs["claude-code"];
+                  const projectConfig = claudeConfig?.project as DeployedClaudeConfig | null;
+                  const globalConfig = claudeConfig?.global as DeployedClaudeGlobalConfig | null;
+                  const hasProjectConfig = projectConfig && (
+                    projectConfig.directory?.exists ||
+                    projectConfig.constitution?.exists ||
+                    (projectConfig.agents?.count ?? 0) > 0 ||
+                    (projectConfig.skills?.count ?? 0) > 0 ||
+                    projectConfig.settings?.exists ||
+                    projectConfig.mcp?.exists
+                  );
+                  const hasGlobalConfig = globalConfig && (
+                    globalConfig.directory?.exists ||
+                    globalConfig.constitution?.exists ||
+                    (globalConfig.agents?.count ?? 0) > 0 ||
+                    (globalConfig.skills?.count ?? 0) > 0 ||
+                    globalConfig.settings?.exists ||
+                    globalConfig.mcp?.exists
+                  );
+                  return (
                 <div
-                  className={`rounded-lg border ${allDeployedConfigs["claude-code"]?.deployed ? "border-green-500/50 bg-green-500/5" : "border-border"}`}
+                  className={`rounded-lg border ${hasProjectConfig ? "border-green-500/50 bg-green-500/5" : "border-border"}`}
                 >
                   <button
                     className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors"
@@ -310,10 +351,15 @@ export function ProjectSelector() {
                     <div className="flex items-center gap-3">
                       <AISystemLogo system="claude-code" className="h-5 w-5" />
                       <span className="font-medium">Claude Code</span>
-                      {allDeployedConfigs["claude-code"]?.deployed ? (
+                      {hasProjectConfig ? (
                         <Badge variant="default" className="bg-green-600 text-xs">Deployed</Badge>
                       ) : (
-                        <Badge variant="outline" className="text-xs">Not configured</Badge>
+                        <Badge variant="outline" className="text-xs">Not deployed</Badge>
+                      )}
+                      {hasGlobalConfig ? (
+                        <Badge variant="default" className="bg-green-600 text-xs">Global</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs text-muted-foreground">No global</Badge>
                       )}
                     </div>
                     {expandedSystem === "claude-code" ? (
@@ -323,7 +369,8 @@ export function ProjectSelector() {
                     )}
                   </button>
                   {expandedSystem === "claude-code" && allDeployedConfigs["claude-code"] && (
-                    <div className="px-3 pb-3 pt-0">
+                    <div className="px-3 pb-3 pt-0 space-y-3">
+                      {/* Project */}
                       <div className="bg-muted/50 rounded-lg p-3 space-y-2">
                         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
                           <FolderOpen className="h-4 w-4 text-blue-500" />
@@ -364,13 +411,67 @@ export function ProjectSelector() {
                           );
                         })()}
                       </div>
+                      {/* Global */}
+                      <div className="bg-muted/50 rounded-lg p-3">
+                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
+                          <Home className="h-4 w-4 text-purple-500" />
+                          Global Configuration
+                        </div>
+                        {(() => {
+                          const config = allDeployedConfigs["claude-code"]?.global as DeployedClaudeGlobalConfig | null;
+                          if (!config) return <p className="text-xs text-muted-foreground">No global configuration</p>;
+                          return (
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div className="flex items-center gap-2">
+                                {config.directory?.exists ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-muted-foreground" />}
+                                <code>~/.claude/</code>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {config.constitution?.exists ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-muted-foreground" />}
+                                <code>~/CLAUDE.md</code>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {(config.agents?.count ?? 0) > 0 ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-muted-foreground" />}
+                                <code>agents/</code>
+                                {(config.agents?.count ?? 0) > 0 && <span className="text-muted-foreground">({config.agents?.count})</span>}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {(config.skills?.count ?? 0) > 0 ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-muted-foreground" />}
+                                <code>skills/</code>
+                                {(config.skills?.count ?? 0) > 0 && <span className="text-muted-foreground">({config.skills?.count})</span>}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {config.settings?.exists ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-muted-foreground" />}
+                                <code>settings.json</code>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {config.mcp?.exists ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-muted-foreground" />}
+                                <code>.mcp.json</code>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
                     </div>
                   )}
                 </div>
+                  );
+                })()}
 
                 {/* Gemini CLI */}
+                {(() => {
+                  const geminiConfig = allDeployedConfigs["gemini-cli"];
+                  const projectConfig = geminiConfig?.project as DeployedGeminiConfig | null;
+                  const globalConfig = geminiConfig?.global as DeployedGeminiGlobalConfig | null;
+                  const hasProjectConfig = projectConfig?.constitution?.exists;
+                  const hasGlobalConfig = globalConfig && (
+                    globalConfig.directory?.exists ||
+                    globalConfig.constitution?.exists ||
+                    globalConfig.settings?.exists
+                  );
+                  return (
                 <div
-                  className={`rounded-lg border ${allDeployedConfigs["gemini-cli"]?.deployed ? "border-green-500/50 bg-green-500/5" : "border-border"}`}
+                  className={`rounded-lg border ${hasProjectConfig ? "border-green-500/50 bg-green-500/5" : "border-border"}`}
                 >
                   <button
                     className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors"
@@ -379,10 +480,15 @@ export function ProjectSelector() {
                     <div className="flex items-center gap-3">
                       <AISystemLogo system="gemini-cli" className="h-5 w-5" />
                       <span className="font-medium">Gemini CLI</span>
-                      {allDeployedConfigs["gemini-cli"]?.deployed ? (
+                      {hasProjectConfig ? (
                         <Badge variant="default" className="bg-green-600 text-xs">Deployed</Badge>
                       ) : (
-                        <Badge variant="outline" className="text-xs">Not configured</Badge>
+                        <Badge variant="outline" className="text-xs">Not deployed</Badge>
+                      )}
+                      {hasGlobalConfig ? (
+                        <Badge variant="default" className="bg-green-600 text-xs">Global</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs text-muted-foreground">No global</Badge>
                       )}
                     </div>
                     {expandedSystem === "gemini-cli" ? (
@@ -439,10 +545,21 @@ export function ProjectSelector() {
                     </div>
                   )}
                 </div>
+                  );
+                })()}
 
                 {/* Cline */}
+                {(() => {
+                  const clineConfig = allDeployedConfigs["cline"];
+                  const projectConfig = clineConfig?.project as DeployedClineConfig | null;
+                  const hasProjectConfig = projectConfig && (
+                    projectConfig.rules?.exists ||
+                    projectConfig.memoryBank?.exists ||
+                    projectConfig.mcp?.exists
+                  );
+                  return (
                 <div
-                  className={`rounded-lg border ${allDeployedConfigs["cline"]?.deployed ? "border-green-500/50 bg-green-500/5" : "border-border"}`}
+                  className={`rounded-lg border ${hasProjectConfig ? "border-green-500/50 bg-green-500/5" : "border-border"}`}
                 >
                   <button
                     className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors"
@@ -451,10 +568,10 @@ export function ProjectSelector() {
                     <div className="flex items-center gap-3">
                       <AISystemLogo system="cline" className="h-5 w-5" />
                       <span className="font-medium">Cline</span>
-                      {allDeployedConfigs["cline"]?.deployed ? (
+                      {hasProjectConfig ? (
                         <Badge variant="default" className="bg-green-600 text-xs">Deployed</Badge>
                       ) : (
-                        <Badge variant="outline" className="text-xs">Not configured</Badge>
+                        <Badge variant="outline" className="text-xs">Not deployed</Badge>
                       )}
                     </div>
                     {expandedSystem === "cline" ? (
@@ -496,6 +613,8 @@ export function ProjectSelector() {
                     </div>
                   )}
                 </div>
+                  );
+                })()}
               </div>
             )}
           </CardContent>

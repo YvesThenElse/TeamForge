@@ -44,7 +44,19 @@ async function detectSystemConfig(system, projectPath) {
       const settingsFile = path.join(claudeDir, 'settings.json');
       const mcpFile = path.join(claudeDir, '.mcp.json');
 
-      const [dirExists, mdStats, localMdStats, agentCount, skillCount, hasSettings, hasMcp] = await Promise.all([
+      // Global config paths
+      const homeDir = os.homedir();
+      const globalDir = path.join(homeDir, '.claude');
+      const globalMd = path.join(homeDir, 'CLAUDE.md');
+      const globalSettings = path.join(globalDir, 'settings.json');
+      const globalMcp = path.join(globalDir, '.mcp.json');
+      const globalAgentsDir = path.join(globalDir, 'agents');
+      const globalSkillsDir = path.join(globalDir, 'skills');
+
+      const [
+        dirExists, mdStats, localMdStats, agentCount, skillCount, hasSettings, hasMcp,
+        globalDirExists, globalMdStats, globalSettingsExists, globalMcpExists, globalAgentCount, globalSkillCount
+      ] = await Promise.all([
         exists(claudeDir),
         getFileStats(claudeMd),
         getFileStats(claudeLocalMd),
@@ -52,6 +64,13 @@ async function detectSystemConfig(system, projectPath) {
         countFiles(skillsDir),
         exists(settingsFile),
         exists(mcpFile),
+        // Global
+        exists(globalDir),
+        getFileStats(globalMd),
+        exists(globalSettings),
+        exists(globalMcp),
+        countFiles(globalAgentsDir),
+        countFiles(globalSkillsDir),
       ]);
 
       return {
@@ -66,7 +85,14 @@ async function detectSystemConfig(system, projectPath) {
           settings: { exists: hasSettings, path: '.claude/settings.json' },
           mcp: { exists: hasMcp, path: '.claude/.mcp.json' },
         },
-        global: null, // Claude Code doesn't use global config for project deployment
+        global: {
+          directory: { exists: globalDirExists, path: '~/.claude/' },
+          constitution: { ...globalMdStats, path: '~/CLAUDE.md' },
+          settings: { exists: globalSettingsExists, path: '~/.claude/settings.json' },
+          mcp: { exists: globalMcpExists, path: '~/.claude/.mcp.json' },
+          agents: { count: globalAgentCount, path: '~/.claude/agents/' },
+          skills: { count: globalSkillCount, path: '~/.claude/skills/' },
+        },
       };
     }
 

@@ -174,6 +174,15 @@ export interface DeployedGeminiConfig {
   constitution: DeployedFileInfo;
 }
 
+export interface DeployedClaudeGlobalConfig {
+  directory: DeployedFileInfo;
+  constitution: DeployedFileInfo;
+  settings: DeployedFileInfo;
+  mcp: DeployedFileInfo;
+  agents: DeployedFileInfo;
+  skills: DeployedFileInfo;
+}
+
 export interface DeployedGeminiGlobalConfig {
   directory: DeployedFileInfo;
   constitution: DeployedFileInfo;
@@ -190,7 +199,7 @@ export interface DeployedSystemConfig {
   system: AISystem;
   deployed: boolean;
   project: DeployedClaudeConfig | DeployedGeminiConfig | DeployedClineConfig | null;
-  global: DeployedGeminiGlobalConfig | null;
+  global: DeployedClaudeGlobalConfig | DeployedGeminiGlobalConfig | null;
 }
 
 export type AllDeployedConfigs = Record<AISystem, DeployedSystemConfig>;
