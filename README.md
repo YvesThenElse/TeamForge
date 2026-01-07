@@ -1,135 +1,135 @@
 # TeamForge
 
-Interface visuelle pour configurer et déployer des équipes d'agents IA sur vos projets git.
+Visual interface to configure and deploy AI agent teams on your git projects.
 
-Application desktop multi-plateforme construite avec Electron et React. Gérez vos équipes d'agents IA, analysez automatiquement vos projets, et générez des configurations prêtes à l'emploi pour Claude Code, Gemini CLI et Cline.
+Cross-platform desktop application built with Electron and React. Manage your AI agent teams, automatically analyze your projects, and generate ready-to-use configurations for Claude Code, Gemini CLI, and Cline.
 
-## Concept TEAMS : Configurations d'Équipes Réutilisables
+## TEAMS Concept: Reusable Team Configurations
 
-### Pourquoi les TEAMS ?
+### Why TEAMS?
 
-Le concept central de TeamForge repose sur les **TEAMS** : des configurations d'équipes complètes et réutilisables qui regroupent tous les éléments nécessaires pour un contexte de travail spécifique.
+The core concept of TeamForge relies on **TEAMS**: complete and reusable team configurations that bundle all necessary elements for a specific work context.
 
-Une TEAM peut contenir :
-- **Agents** : Spécialistes IA avec des compétences ciblées (frontend, backend, testing, etc.)
-- **Skills** : Commandes slash personnalisées (`/commit`, `/review`, `/test`, etc.)
-- **Hooks** : Automatisations déclenchées avant/après les actions de l'IA
-- **MCP Servers** : Extensions de contexte (accès base de données, API, fichiers, etc.)
-- **Sécurité** : Permissions et restrictions sur les outils et commandes
+A TEAM can contain:
+- **Agents**: AI specialists with targeted skills (frontend, backend, testing, etc.)
+- **Skills**: Custom slash commands (`/commit`, `/review`, `/test`, etc.)
+- **Hooks**: Automations triggered before/after AI actions
+- **MCP Servers**: Context extensions (database access, API, files, etc.)
+- **Security**: Permissions and restrictions on tools and commands
 
-### Avantages des TEAMS
+### Benefits of TEAMS
 
-**Standardisation d'entreprise**
-- Définissez des configurations approuvées par votre équipe technique
-- Garantissez que tous les développeurs utilisent les mêmes pratiques IA
-- Centralisez les bonnes pratiques dans des templates réutilisables
+**Enterprise Standardization**
+- Define configurations approved by your technical team
+- Ensure all developers use the same AI practices
+- Centralize best practices in reusable templates
 
-**Déploiement instantané**
-- Passez d'un contexte à l'autre en un clic (frontend, backend, DevOps, etc.)
-- Configurez un nouveau projet en quelques secondes
-- Évitez les configurations manuelles répétitives
+**Instant Deployment**
+- Switch contexts with one click (frontend, backend, DevOps, etc.)
+- Configure a new project in seconds
+- Avoid repetitive manual configurations
 
-**Cohérence entre projets**
-- Réutilisez les mêmes équipes sur tous vos projets
-- Maintenez une approche uniforme de l'assistance IA
-- Partagez vos configurations avec votre équipe
+**Cross-Project Consistency**
+- Reuse the same teams across all your projects
+- Maintain a uniform approach to AI assistance
+- Share your configurations with your team
 
-**Séparation des responsabilités**
-- Les architectes définissent les TEAMS
-- Les développeurs les utilisent sans configuration
-- Les configurations évoluent indépendamment des projets
+**Separation of Responsibilities**
+- Architects define TEAMS
+- Developers use them without configuration
+- Configurations evolve independently from projects
 
-**Sécurité intégrée**
-- Contrôlez précisément les permissions par TEAM
-- Limitez les commandes autorisées selon le contexte
-- Auditez et validez les configurations avant déploiement
+**Built-in Security**
+- Precisely control permissions per TEAM
+- Limit authorized commands based on context
+- Audit and validate configurations before deployment
 
-## Fonctionnalités
+## Features
 
-### Gestion des Agents
-- **80+ agents pré-configurés** organisés par catégorie :
-  - Langages (TypeScript, Python, Go, Rust, C#, Java, etc.)
+### Agent Management
+- **80+ pre-configured agents** organized by category:
+  - Languages (TypeScript, Python, Go, Rust, C#, Java, etc.)
   - Frontend (React, Vue, Angular, Svelte, Next.js, etc.)
   - Backend (Node.js, Django, FastAPI, Spring Boot, NestJS, etc.)
-  - Base de données (SQL, MongoDB, PostgreSQL, Redis, Prisma)
+  - Database (SQL, MongoDB, PostgreSQL, Redis, Prisma)
   - DevOps (Docker, Kubernetes, Terraform, CI/CD, Linux)
   - Cloud (AWS, Azure, GCP, Serverless)
   - Testing (Unit, E2E, Automation)
   - Architecture (DDD, TDD, BDD, Microservices)
-  - Sécurité (Security Expert, Auth Expert)
-  - Et bien plus...
-- Création d'agents personnalisés
-- Configuration du modèle par agent (Sonnet, Opus, Haiku)
+  - Security (Security Expert, Auth Expert)
+  - And much more...
+- Custom agent creation
+- Per-agent model configuration (Sonnet, Opus, Haiku)
 
-### Gestion des Skills
-- Commandes slash personnalisées
-- Scripts et automatisations
-- Templates de code réutilisables
+### Skills Management
+- Custom slash commands
+- Scripts and automations
+- Reusable code templates
 
-### Gestion des Hooks
-- Déclenchement sur PreToolUse / PostToolUse
-- Logging automatique des commandes
-- Validations personnalisées
+### Hooks Management
+- PreToolUse / PostToolUse triggers
+- Automatic command logging
+- Custom validations
 
-### Gestion des MCP Servers
-- Configuration des serveurs Model Context Protocol
-- Intégration avec des sources de données externes
-- Extension des capacités de l'IA
+### MCP Server Management
+- Model Context Protocol server configuration
+- Integration with external data sources
+- AI capability extensions
 
-### Déploiement Multi-Systèmes
-- **Claude Code** : `.claude/agents/`, `.claude/skills/`, `settings.local.json`
-- **Gemini CLI** : `GEMINI.md`, `~/.gemini/`
-- **Cline** : `.clinerules`, `.vscode/mcp.json`
+### Multi-System Deployment
+- **Claude Code**: `.claude/agents/`, `.claude/skills/`, `settings.local.json`
+- **Gemini CLI**: `GEMINI.md`, `~/.gemini/`
+- **Cline**: `.clinerules`, `.vscode/mcp.json`
 
-### Sécurité et Permissions
-- Configuration des commandes autorisées/bloquées
-- Gestion des permissions par élément
-- Validation avant déploiement
+### Security and Permissions
+- Allowed/blocked command configuration
+- Per-element permission management
+- Pre-deployment validation
 
-## Mode Développeur
+## Developer Mode
 
-Le **Mode Développeur** permet de travailler sur vos propres bibliothèques de templates en local, sans passer par la synchronisation git.
+**Developer Mode** allows you to work on your own local template libraries without going through git synchronization.
 
 ### Activation
-1. Ouvrez les **Settings** dans l'application
-2. Activez **Developer Mode** dans l'onglet Preferences
+1. Open **Settings** in the application
+2. Enable **Developer Mode** in the Preferences tab
 
-### Fonctionnement
+### How It Works
 
-En mode standard, TeamForge synchronise les templates depuis un repository git :
+In standard mode, TeamForge syncs templates from a git repository:
 ```
-Repository Git → Cache local (.teamforge/cache/) → Utilisation
-```
-
-En mode développeur, TeamForge charge directement depuis un dossier local :
-```
-Dossier Dev Path → Utilisation directe (pas de cache)
+Git Repository -> Local cache (.teamforge/cache/) -> Usage
 ```
 
-### Configuration des chemins Dev
+In developer mode, TeamForge loads directly from a local folder:
+```
+Dev Path Folder -> Direct usage (no cache)
+```
 
-Pour chaque type de ressource, vous pouvez configurer un **Dev Path** :
+### Dev Path Configuration
 
-| Ressource | Paramètre | Exemple |
-|-----------|-----------|---------|
+For each resource type, you can configure a **Dev Path**:
+
+| Resource | Parameter | Example |
+|----------|-----------|---------|
 | Agents | `agentDevPath` | `C:\Dev\MyAgents` |
 | Skills | `skillDevPath` | `C:\Dev\MySkills` |
 | Hooks | `hookDevPath` | `C:\Dev\MyHooks` |
 | MCP | `mcpDevPath` | `C:\Dev\MyMCPs` |
 | Constitutions | `constitutionDevPath` | `C:\Dev\MyConstitutions` |
 
-### Cas d'usage
+### Use Cases
 
-- **Création de nouveaux agents** : Testez vos agents en temps réel
-- **Personnalisation d'entreprise** : Développez une bibliothèque interne
-- **Contribution open source** : Préparez des templates avant PR
-- **Debug** : Isolez les problèmes de configuration
+- **Creating new agents**: Test your agents in real-time
+- **Enterprise customization**: Develop an internal library
+- **Open source contribution**: Prepare templates before PR
+- **Debug**: Isolate configuration issues
 
 ## Installation
 
-### Prérequis
+### Prerequisites
 
-- Node.js 18+ et npm
+- Node.js 18+ and npm
 - Git
 
 ### Installation
@@ -140,91 +140,91 @@ cd TeamForge
 npm install
 ```
 
-### Développement
+### Development
 
 ```bash
-npm start                      # Démarre l'application en mode développement
+npm start                      # Start the application in development mode
 ```
 
 ### Build
 
 ```bash
-npm run electron:build         # Build de production (plateforme courante)
-npm run build:win              # Build Windows (NSIS)
-npm run build:mac              # Build macOS (DMG)
-npm run build:linux            # Build Linux (AppImage)
+npm run electron:build         # Production build (current platform)
+npm run build:win              # Windows build (NSIS)
+npm run build:mac              # macOS build (DMG)
+npm run build:linux            # Linux build (AppImage)
 ```
 
-## Utilisation
+## Usage
 
-1. **Sélectionner un Projet** - Choisissez un dossier local ou clonez depuis une URL Git
-2. **Explorer les Ressources** - Parcourez les agents, skills, hooks et MCP disponibles
-3. **Créer une TEAM** - Assemblez vos éléments dans une configuration d'équipe
-4. **Configurer la Sécurité** - Définissez les permissions et restrictions
-5. **Déployer** - Exportez vers Claude Code, Gemini CLI ou Cline
+1. **Select a Project** - Choose a local folder or clone from a Git URL
+2. **Explore Resources** - Browse available agents, skills, hooks, and MCPs
+3. **Create a TEAM** - Assemble your elements into a team configuration
+4. **Configure Security** - Define permissions and restrictions
+5. **Deploy** - Export to Claude Code, Gemini CLI, or Cline
 
-## Structure du Projet
+## Project Structure
 
 ```
 TeamForge/
-├── src/                  # Frontend React
-│   ├── components/       # Composants UI
-│   │   ├── agents/       # Gestion des agents
-│   │   ├── skills/       # Gestion des skills
-│   │   ├── hooks/        # Gestion des hooks
-│   │   ├── mcp/          # Gestion des MCP servers
-│   │   ├── teams/        # Éditeur de TEAMS
+├── src/                  # React Frontend
+│   ├── components/       # UI Components
+│   │   ├── agents/       # Agent management
+│   │   ├── skills/       # Skills management
+│   │   ├── hooks/        # Hooks management
+│   │   ├── mcp/          # MCP server management
+│   │   ├── teams/        # TEAMS editor
 │   │   └── settings/     # Configuration
-│   ├── stores/           # État Zustand
-│   ├── services/         # Communication Electron IPC
-│   └── types/            # Types TypeScript
-├── electron/             # Backend Electron
-│   ├── main.js           # Process principal
-│   ├── preload.js        # Bridge IPC sécurisé
-│   └── handlers/         # Handlers IPC
-├── examples/             # Bibliothèque de templates
-│   ├── agents/           # 80+ agents pré-configurés
-│   ├── skills/           # Skills exemple
-│   └── hooks/            # Hooks exemple
-└── .teamforge/           # Configuration locale
-    ├── settings.json     # Paramètres TeamForge
-    └── cache/            # Cache des templates synchronisés
+│   ├── stores/           # Zustand state
+│   ├── services/         # Electron IPC communication
+│   └── types/            # TypeScript types
+├── electron/             # Electron Backend
+│   ├── main.js           # Main process
+│   ├── preload.js        # Secure IPC bridge
+│   └── handlers/         # IPC handlers
+├── examples/             # Template library
+│   ├── agents/           # 80+ pre-configured agents
+│   ├── skills/           # Example skills
+│   └── hooks/            # Example hooks
+└── .teamforge/           # Local configuration
+    ├── settings.json     # TeamForge settings
+    └── cache/            # Synced template cache
 ```
 
-## Stack Technique
+## Tech Stack
 
-**Backend** : Electron 28, Node.js, simple-git, glob, js-yaml
-**Frontend** : React 18, TypeScript, Zustand, Tailwind CSS, Radix UI
+**Backend**: Electron 28, Node.js, simple-git, glob, js-yaml
+**Frontend**: React 18, TypeScript, Zustand, Tailwind CSS, Radix UI
 
-## Scripts Disponibles
+## Available Scripts
 
-| Commande | Description |
-|----------|-------------|
-| `npm start` | Démarre l'application en développement |
-| `npm run electron:build` | Build de production |
-| `npm run build:win` | Build installeur Windows |
-| `npm run build:mac` | Build application macOS |
-| `npm run build:linux` | Build application Linux |
-| `npm run clean` | Supprime les artefacts de build |
-| `npm run check:frontend` | Vérification TypeScript |
+| Command | Description |
+|---------|-------------|
+| `npm start` | Start the application in development |
+| `npm run electron:build` | Production build |
+| `npm run build:win` | Build Windows installer |
+| `npm run build:mac` | Build macOS application |
+| `npm run build:linux` | Build Linux application |
+| `npm run clean` | Remove build artifacts |
+| `npm run check:frontend` | TypeScript verification |
 
-## Contribution
+## Contributing
 
-TeamForge utilise Claude Code pour son propre développement avec des agents spécialisés.
+TeamForge uses Claude Code for its own development with specialized agents.
 
-Workflow de contribution standard :
-1. Forkez le repository
-2. Créez une branche feature
-3. Effectuez vos modifications
-4. Lancez les vérifications (`npm run check:frontend`)
-5. Soumettez une pull request
+Standard contribution workflow:
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run verifications (`npm run check:frontend`)
+5. Submit a pull request
 
 ## License
 
 This project is licensed under the GNU General Public License v3.0 (GPLv3).
 
 TeamForge
-Copyright (C) 2025 
+Copyright (C) 2025
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
